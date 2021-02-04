@@ -25,7 +25,6 @@ type Schema struct {
     Fields                   []*Field
     FieldsByName             map[string]*Field
     FieldsByDBName           map[string]*Field
-    FieldsWithDefaultDBValue []*Field // fields with default value assigned by database
     err                      error
     initialized              chan struct{}
     cacheStore               *sync.Map
