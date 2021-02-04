@@ -2,11 +2,17 @@ package schema
 
 import (
     "reflect"
+    "strings"
 )
 
 func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
 
+    // get name in db
     dbName := schema.fieldDBName(fieldStruct)
+
+    // get tag setting
+    fieldTagSetting := schema.fieldTagSetting(fieldStruct)
+
 
     field := &Field{
         Name:        fieldStruct.Name,
@@ -14,6 +20,7 @@ func (schema *Schema) ParseField(fieldStruct reflect.StructField) *Field {
         FieldType:   fieldStruct.Type,
         StructField: fieldStruct,
         Tag:         fieldStruct.Tag,
+        TagSettings: fieldTagSetting,
         Schema:      schema,
     }
 
@@ -32,7 +39,9 @@ func (schema *Schema) fieldDBName(fieldStruct reflect.StructField) string {
     if name, ok := fieldStruct.Tag.Lookup("bson"); ok && name != "" {
         return name
     } else {
-        return fieldStruct.Name
+        s := strings.Split(fieldStruct.Name, ",")[0]
+        s = strings.Trim(s, "")
+        return strings.ToLower(s)
     }
 }
 
