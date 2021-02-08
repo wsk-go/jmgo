@@ -62,6 +62,25 @@ func Test_Raw_Read(t *testing.T) {
     fmt.Println(test)
 }
 
+func Test_Read(t *testing.T) {
+
+    c := NewClient(setupMongoClient(MongoUrl))
+
+    db := c.Database("test")
+    col := db.Collection("test")
+    ctx := context.Background()
+
+    var test Test
+    err := col.FindOne()
+
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
+
+    fmt.Println(test)
+}
+
 func setupMongoClient(mongoUrl string) *mongo.Client {
 
     monitorOptions := options.Client().SetMonitor(&event.CommandMonitor{
