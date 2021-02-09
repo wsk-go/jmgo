@@ -2,14 +2,14 @@ package schema
 
 import (
     "fmt"
-    "jmongo/jtype"
+    "jmongo/extype"
     "testing"
 )
 
 type User struct {
     Name    string
     Age     string `bson:"age"`
-    OrderId jtype.ObjectIdString
+    OrderId extype.ObjectIdString
 }
 
 func (*User) CollectionName() string {
@@ -17,7 +17,7 @@ func (*User) CollectionName() string {
 }
 
 func Test_ParseSchema(t *testing.T) {
-    s, err := getOrParse(&User{})
+    s, err := GetOrParse(&User{})
     if err != nil {
         fmt.Println(s)
     }

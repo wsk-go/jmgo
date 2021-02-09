@@ -193,9 +193,9 @@ func GetOrParse(dest interface{}) (*Schema, error) {
 
 	if modelType.Kind() != reflect.Struct {
 		if modelType.PkgPath() == "" {
-			return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest)
+			return nil, errors.WithStack(fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest))
 		}
-		return nil, fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
+		return nil, errors.WithStack(fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name()))
 	}
 
 	if v, ok := cacheStore.Load(modelType); ok {

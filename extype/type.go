@@ -1,4 +1,4 @@
-package jtype
+package extype
 
 import (
     "go.mongodb.org/mongo-driver/bson"

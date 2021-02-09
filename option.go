@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"jmongo/errors"
 	"jmongo/schema"
 )
 
@@ -15,12 +16,14 @@ type Sort struct {
 }
 
 type FindOption struct {
-	skip     int
-	limit    int
-	total    *int64
-	includes []string
-	excludes []string
-	sorts    []*Sort
+	skip        int
+	limit       int
+	total       *int64
+	includes    []string
+	excludes    []string
+	sorts       []*Sort
+	findOneOpts []*options.FindOneOptions
+	findOpts    []*options.FindOptions
 }
 
 func Option() *FindOption {
@@ -64,6 +67,7 @@ func (th *FindOption) AddOrder(fieldName string, asc bool) *FindOption {
 	})
 	return th
 }
+
 
 // 复制options不存在的配置
 // 如果options中有属性与当前配置冲突,则使用当前配置
@@ -117,8 +121,7 @@ func Merge(options []*FindOption) *FindOption {
 	return current
 }
 
-
-func (th *FindOption) makeFindOneOption(schema *schema.Schema) (*options.FindOneOptions, error) {
+func (th *FindOption) makeFindOneOptions(schema *schema.Schema) ([]*options.FindOneOptions, error) {
 	option := options.FindOne()
 
 	// 设置偏移
@@ -144,7 +147,42 @@ func (th *FindOption) makeFindOneOption(schema *schema.Schema) (*options.FindOne
 		option.SetSort(sort)
 	}
 
-	return option, nil
+	return []*options.FindOneOptions{option}, nil
+
+}
+
+func (th *FindOption) makeFindOption(schema *schema.Schema) ([]*options.FindOptions, error) {
+	option := options.Find()
+
+	// 设置偏移
+	if th.skip > 0 {
+		option.SetSkip(int64(th.skip))
+	}
+
+	// 设置偏移
+	if th.limit > 0 {
+		option.SetLimit(int64(th.limit))
+	}
+
+	// 设置projection
+	projection, err := th.makeProjection(schema, th.includes, th.excludes)
+	if err != nil {
+		return nil, err
+	}
+	if len(projection) > 0 {
+		option.SetProjection(projection)
+	}
+
+	// 设置sort
+	sort, err := th.makeSort(schema, th.sorts)
+	if err != nil {
+		return nil, err
+	}
+	if len(sort) > 0 {
+		option.SetSort(sort)
+	}
+
+	return []*options.FindOptions{option}, nil
 
 }
 
@@ -159,7 +197,7 @@ func (th *FindOption) makeProjection(schema *schema.Schema, includes []string, e
 	for _, include := range th.includes {
 		field := schema.LookUpField(include)
 		if field == nil {
-			return nil, newError(fmt.Sprintf("field %s not found in model %s", include, schema.Name))
+			return nil, errors.NewError(fmt.Sprintf("field %s not found in model %s", include, schema.Name))
 		}
 
 		projection = append(projection, primitive.E{
@@ -171,7 +209,7 @@ func (th *FindOption) makeProjection(schema *schema.Schema, includes []string, e
 	for _, exclude := range th.excludes {
 		field := schema.LookUpField(exclude)
 		if field == nil {
-			return nil, newError(fmt.Sprintf("field %s not found in model %s", exclude, schema.Name))
+			return nil, errors.NewError(fmt.Sprintf("field %s not found in model %s", exclude, schema.Name))
 		}
 
 		projection = append(projection, primitive.E{
@@ -189,7 +227,7 @@ func (th *FindOption) makeSort(schema *schema.Schema, sorts []*Sort) (bson.D, er
 	for index, sort := range th.sorts {
 		field := schema.LookUpField(sort.Field)
 		if field == nil {
-			return nil, newError(fmt.Sprintf("field %s not found in model %s", sort.Field, schema.Name))
+			return nil, errors.NewError(fmt.Sprintf("field %s not found in model %s", sort.Field, schema.Name))
 		}
 		var asc = 1
 		if !sort.Asc {

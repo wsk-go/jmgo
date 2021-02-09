@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"jmongo/errors"
 	"jmongo/schema"
 	"jmongo/utils"
 	"reflect"
@@ -21,26 +22,53 @@ func NewMongoCollection(collection *mongo.Collection) *Collection {
 	return &Collection{collection: collection}
 }
 
-//// 封装了一下mongo的查询方法
-//func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
-//	if filter == nil {
-//		filter = bson.M{}
-//	}
-//	// 查询
-//	cursor, err := th.collection.Find(ctx, filter, opts...)
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	defer func() {
-//		_ = cursor.Close(ctx)
-//	}()
-//
-//	err = cursor.All(ctx, out)
-//
-//	return err
-//}
+// 封装了一下mongo的查询方法
+func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
+
+	//outValue := reflect.ValueOf(out)
+	//err := mustBeAddressableSlice(outValue)
+	//if err != nil {
+	//	return err
+	//}
+
+	// 则默认所有
+	if filter == nil {
+		filter = bson.M{}
+	}
+
+	// 获取schema
+	_schema, err := schema.GetOrParse(out)
+	if err != nil {
+		return err
+	}
+
+	// 转化成mongo的配置选项
+	var mongoOpts []*options.FindOptions
+	if len(opts) > 0 {
+		mongoOpts, err = Merge(opts).makeFindOption(_schema)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 查询
+	cursor, err := th.collection.Find(ctx, filter, mongoOpts...)
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+
+	err = cursor.All(ctx, out)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
 
 // 封装了一下mongo的查询方法
 func (th *Collection) FindOne(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) (ok bool, err error) {
@@ -51,36 +79,36 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 	// 获取schema
 	_schema, err := schema.GetOrParse(out)
 	if err != nil {
-		return
+		return false, err
 	}
 
 	// 转化成mongo的配置选项
-	option, err := Merge(opts).makeFindOneOption(_schema)
-	if err != nil {
-		return
+	var mongoOpts []*options.FindOneOptions
+	if len(opts) > 0 {
+		mongoOpts, err = Merge(opts).makeFindOneOptions(_schema)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// 查找
-	one := th.collection.FindOne(ctx, filter, option)
+	one := th.collection.FindOne(ctx, filter, mongoOpts...)
 	err = one.Err()
 	if err != nil {
-		return
+		return false, errors.WithStack(err)
 	}
 
 	// 解析
 	err = one.Decode(out)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			err = nil
-			return
+			return false, nil
 		}
 
-		return
+		return false, errors.WithStack(err)
 	}
 
-	// 成功返回
-	ok = true
-	return
+	return true, nil
 }
 
 func (th *Collection) mustConvertFilter(schema *schema.Schema, filter interface{}) (interface{}, error) {
@@ -91,7 +119,7 @@ func (th *Collection) mustConvertFilter(schema *schema.Schema, filter interface{
 	}
 
 	if count == 0 {
-		return nil, newError("filter not contain any condition, this behavior is not allow")
+		return nil, errors.NewError("filter not contain any condition, this behavior is not allow")
 	}
 
 	return query, nil
@@ -203,7 +231,7 @@ func (th *Collection) mustSchemaField(fieldName string, schema *schema.Schema) (
 	schemaField := schema.LookUpField(fieldName)
 
 	if schemaField == nil {
-		return nil, newError(fmt.Sprintf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
+		return nil, errors.NewError(fmt.Sprintf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
 	}
 
 	return schemaField, nil
@@ -318,7 +346,7 @@ func (th *Collection) Update(ctx context.Context, filter interface{}, document i
 	}
 
 	if result.MatchedCount == 0 {
-		return newError("update fail")
+		return errors.NewError("update fail")
 	}
 
 	if d, ok := document.(AfterUpdate); ok {
@@ -454,4 +482,21 @@ func NewNotMatchError(msg string) *NotMatchError {
 
 func (n NotMatchError) Error() string {
 	return n.msg
+}
+
+func mustBeAddressableSlice(value reflect.Value) error {
+	if value.Kind() != reflect.Ptr {
+		return errors.WithStack(fmt.Errorf("results argument must be a pointer to a slice, but was a %s", value.Kind()))
+	}
+
+	sliceVal := value.Elem()
+	if sliceVal.Kind() == reflect.Interface {
+		sliceVal = sliceVal.Elem()
+	}
+
+	if sliceVal.Kind() != reflect.Slice {
+		return errors.WithStack(fmt.Errorf("results argument must be a pointer to a slice, but was a pointer to %s", sliceVal.Kind()))
+	}
+
+	return nil
 }
