@@ -2,27 +2,21 @@ package entity
 
 import (
     "fmt"
-    "github.com/pkg/errors"
+    "jmongo/errortype"
     "jmongo/utils"
     "reflect"
-    "strings"
     "sync"
 )
 
 var cacheStore = &sync.Map{}
 
-// ErrUnsupportedDataType unsupported data type
-var ErrUnsupportedDataType = errors.New("unsupported data type")
-
 type Entity struct {
-    // entity name
     Name string
-    // model type
     ModelType reflect.Type
-    // collection
     Collection              string
-    PrioritizedPrimaryField *EntityField
-    DBNames                 []string
+
+    PrimaryField *EntityField
+    DBNames      []string
     PrimaryFields           []*EntityField
     PrimaryFieldDBNames     []string
     Fields                  []*EntityField
@@ -35,7 +29,7 @@ type Entity struct {
 func newEntity(dest interface{}) (*Entity, error) {
 
     if dest == nil {
-        return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest)
+        return nil, fmt.Errorf("%w: %s", errortype.ErrUnsupportedDataType, "dest is nil")
     }
 
     modelType := reflect.ValueOf(dest).Type()
@@ -44,15 +38,16 @@ func newEntity(dest interface{}) (*Entity, error) {
 }
 
 func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) {
+
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
         modelType = modelType.Elem()
     }
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, modelType.Name())
+            return nil, fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, modelType.Name())
         }
-        return nil, fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
+        return nil, fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
     }
 
     if v, ok := cacheStore.Load(modelType); ok {
@@ -77,6 +72,12 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
         return nil, err
     }
 
+    // extract id field from fields
+    idField := extractIdField(fields)
+    if idField == nil {
+        return nil, errortype.ErrIdFieldNotFound
+    }
+
     // create map for fields by name and by db name
     fieldsByName, fieldsByDBName := makeFieldsByNameAndByDBName(fields)
 
@@ -91,11 +92,9 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     return entity, nil
 }
 
-func extractFields(modelType reflect.Type, index []int) ([]*EntityField, []*EntityField, error) {
+func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, err error) {
 
     // get field
-    var fields []*EntityField
-    var allFields []*EntityField
     for i := 0; i < modelType.NumField(); i++ {
         // clone index
         cloneIndex := make([]int, len(index), len(index)+1)
@@ -108,7 +107,7 @@ func extractFields(modelType reflect.Type, index []int) ([]*EntityField, []*Enti
         // parse to get bson info
         structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
         if err != nil {
-            return nil, nil, err
+            return nil, err
         }
 
         // filter skip field
@@ -116,23 +115,33 @@ func extractFields(modelType reflect.Type, index []int) ([]*EntityField, []*Enti
             continue
         }
 
-        // struct field and mongo
-        var entity *Entity
-        if len(index) == 0 && (structField.Anonymous || (structField.Type.Kind() == reflect.Struct && structTags.Inline)) {
-            entity, err = newEntityByModelType(structField.Type, index)
-            if err != nil {
-                return nil, nil, err
-            }
-
-            // get all fields
-            allFields = append(fields, entity.Fields...)
+        field, err := newField(structField, structTags, index)
+        if err != nil {
+            return nil, err
         }
-
-        field := newField(structField, structTags, entity, nil)
         fields = append(fields, field)
     }
 
-    return fields, allFields, nil
+    return fields, nil
+}
+
+func extractIdField(fields []*EntityField) *EntityField {
+    var idField *EntityField
+    for _, field := range fields {
+        if field.Entity != nil {
+            idField = extractIdField(field.Entity.Fields)
+            if idField != nil {
+                break
+            }
+        } else {
+            if field.Id {
+                idField = field
+                break
+            }
+        }
+    }
+
+    return idField
 }
 
 func makeFieldsByNameAndByDBName(fields []*EntityField) (fieldsByName, fieldsByDBName map[string]*EntityField) {
@@ -148,8 +157,6 @@ func makeFieldsByNameAndByDBName(fields []*EntityField) (fieldsByName, fieldsByD
         if v, ok := fieldsByName[field.Name]; !ok {
             fieldsByName[field.Name] = v
         }
-
-        field.setupValuerAndSetter()
     }
 
     return fieldsByName, fieldsByDBName
@@ -173,15 +180,16 @@ func (th *Entity) LookUpField(name string) *EntityField {
 }
 
 func (th *Entity) PrimaryKeyDBName() string {
-    if th.PrioritizedPrimaryField != nil {
-        return th.PrioritizedPrimaryField.DBName
+    if th.PrimaryField != nil {
+        return th.PrimaryField.DBName
     }
     return "_id"
 }
 
-var mutex sync.Mutex
 
+var mutex sync.Mutex
 func GetOrParse(dest interface{}) (*Entity, error) {
+
     modelType := reflect.ValueOf(dest).Type()
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
         modelType = modelType.Elem()
@@ -189,9 +197,9 @@ func GetOrParse(dest interface{}) (*Entity, error) {
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest)
+            return nil, fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, dest)
         }
-        return nil, fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
+        return nil, fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
     }
 
     if v, ok := cacheStore.Load(modelType); ok {
@@ -213,41 +221,4 @@ func GetOrParse(dest interface{}) (*Entity, error) {
     }
 
     return entity, nil
-}
-
-type StructTags struct {
-    Name      string
-    OmitEmpty bool
-    MinSize   bool
-    Truncate  bool
-    Inline    bool
-    Skip      bool
-}
-
-func parseTags(key string, tag string) (StructTags, error) {
-    var st StructTags
-    if tag == "-" {
-        st.Skip = true
-        return st, nil
-    }
-
-    for idx, str := range strings.Split(tag, ",") {
-        if idx == 0 && str != "" {
-            key = str
-        }
-        switch str {
-        case "omitempty":
-            st.OmitEmpty = true
-        case "minsize":
-            st.MinSize = true
-        case "truncate":
-            st.Truncate = true
-        case "inline":
-            st.Inline = true
-        }
-    }
-
-    st.Name = key
-
-    return st, nil
 }
