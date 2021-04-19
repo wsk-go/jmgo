@@ -20,13 +20,13 @@ type Entity struct {
     // model type
     ModelType reflect.Type
     // collection
-    Collection string
-    //
+    Collection              string
     PrioritizedPrimaryField *EntityField
     DBNames                 []string
     PrimaryFields           []*EntityField
     PrimaryFieldDBNames     []string
     Fields                  []*EntityField
+    AllFields               []*EntityField
     FieldsByName            map[string]*EntityField
     FieldsByDBName          map[string]*EntityField
 }
@@ -39,13 +39,18 @@ func newEntity(dest interface{}) (*Entity, error) {
     }
 
     modelType := reflect.ValueOf(dest).Type()
+
+    return newEntityByModelType(modelType, nil)
+}
+
+func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) {
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
         modelType = modelType.Elem()
     }
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest)
+            return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, modelType.Name())
         }
         return nil, fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
     }
@@ -57,15 +62,17 @@ func newEntity(dest interface{}) (*Entity, error) {
 
     // get collection name for model
     modelValue := reflect.New(modelType)
-    var tableName string
+    var collectionName string
     if tabler, ok := modelValue.Interface().(CollectionNameSupplier); ok {
-        tableName = tabler.CollectionName()
+        collectionName = tabler.CollectionName()
     } else {
-        tableName = modelType.Name()
+        collectionName = modelType.Name()
     }
 
+    entity := &Entity{}
+
     // extract fields from model type
-    fields, err := extractFields(modelType)
+    fields, err := extractFields(modelType, index)
     if err != nil {
         return nil, err
     }
@@ -74,87 +81,34 @@ func newEntity(dest interface{}) (*Entity, error) {
     fieldsByName, fieldsByDBName := makeFieldsByNameAndByDBName(fields)
 
     // entity
-    schema := &Entity{
-        Name:           modelType.Name(),
-        ModelType:      modelType,
-        Collection:     tableName,
-        FieldsByName:   fieldsByName,
-        FieldsByDBName: fieldsByDBName,
-    }
+    entity.Name = modelType.Name()
+    entity.ModelType = modelType
+    entity.Fields = fields
+    entity.Collection = collectionName
+    entity.FieldsByName = fieldsByName
+    entity.FieldsByDBName = fieldsByDBName
 
-    //
-    //for _, field := range schema.Fields {
-    //
-    //   // nonexistence or shortest path or first appear prioritized if has permission
-    //   if v, ok := schema.FieldsByDBName[field.DBName]; !ok {
-    //       if _, ok := schema.FieldsByDBName[field.DBName]; !ok {
-    //           schema.DBNames = append(schema.DBNames, field.DBName)
-    //       }
-    //       schema.FieldsByDBName[field.DBName] = field
-    //       schema.FieldsByName[field.Name] = field
-    //
-    //       if v != nil && v.PrimaryKey {
-    //           for idx, f := range schema.PrimaryFields {
-    //               if f == v {
-    //                   schema.PrimaryFields = append(schema.PrimaryFields[0:idx], schema.PrimaryFields[idx+1:]...)
-    //               }
-    //           }
-    //       }
-    //
-    //       if field.PrimaryKey {
-    //           schema.PrimaryFields = append(schema.PrimaryFields, field)
-    //       }
-    //   }
-    //
-    //   if of, ok := schema.FieldsByName[field.Name]; !ok || of.TagSettings["-"] == "-" {
-    //       schema.FieldsByName[field.Name] = field
-    //   }
-    //
-    //   field.setupValuerAndSetter()
-    //}
-    //
-    //prioritizedPrimaryField := schema.LookUpField("id")
-    //if prioritizedPrimaryField == nil {
-    //    prioritizedPrimaryField = schema.LookUpField("ID")
-    //}
-    //
-    //if prioritizedPrimaryField != nil {
-    //    if prioritizedPrimaryField.PrimaryKey {
-    //        schema.PrioritizedPrimaryField = prioritizedPrimaryField
-    //    } else if len(schema.PrimaryFields) == 0 {
-    //        prioritizedPrimaryField.PrimaryKey = true
-    //        schema.PrioritizedPrimaryField = prioritizedPrimaryField
-    //        schema.PrimaryFields = append(schema.PrimaryFields, prioritizedPrimaryField)
-    //    }
-    //}
-    //
-    //if schema.PrioritizedPrimaryField == nil && len(schema.PrimaryFields) == 1 {
-    //    schema.PrioritizedPrimaryField = schema.PrimaryFields[0]
-    //}
-    //
-    //for _, field := range schema.PrimaryFields {
-    //    schema.PrimaryFieldDBNames = append(schema.PrimaryFieldDBNames, field.DBName)
-    //}
-    //
-    //if v, loaded := cacheStore.LoadOrStore(modelType, schema); loaded {
-    //    s := v.(*Entity)
-    //    return s, s.err
-    //}
-
-    return schema, schema.err
+    return entity, nil
 }
 
-func extractFields(modelType reflect.Type) ([]*EntityField, error) {
+func extractFields(modelType reflect.Type, index []int) ([]*EntityField, []*EntityField, error) {
+
     // get field
     var fields []*EntityField
+    var allFields []*EntityField
     for i := 0; i < modelType.NumField(); i++ {
+        // clone index
+        cloneIndex := make([]int, len(index), len(index)+1)
+        copy(cloneIndex, index)
+        cloneIndex = append(cloneIndex, i)
+
         structField := modelType.Field(i)
         tag := structField.Tag.Get("bson")
 
         // parse to get bson info
         structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
         if err != nil {
-            return nil, err
+            return nil, nil, err
         }
 
         // filter skip field
@@ -162,16 +116,28 @@ func extractFields(modelType reflect.Type) ([]*EntityField, error) {
             continue
         }
 
-        field := newField(structField, structTags)
+        // struct field and mongo
+        var entity *Entity
+        if len(index) == 0 && (structField.Anonymous || (structField.Type.Kind() == reflect.Struct && structTags.Inline)) {
+            entity, err = newEntityByModelType(structField.Type, index)
+            if err != nil {
+                return nil, nil, err
+            }
+
+            // get all fields
+            allFields = append(fields, entity.Fields...)
+        }
+
+        field := newField(structField, structTags, entity, nil)
         fields = append(fields, field)
     }
 
-    return fields, nil
+    return fields, allFields, nil
 }
 
 func makeFieldsByNameAndByDBName(fields []*EntityField) (fieldsByName, fieldsByDBName map[string]*EntityField) {
-    fieldsByName := map[string]*EntityField{}
-    fieldsByDBName := map[string]*EntityField{}
+    fieldsByName = map[string]*EntityField{}
+    fieldsByDBName = map[string]*EntityField{}
 
     for _, field := range fields {
 
@@ -179,12 +145,14 @@ func makeFieldsByNameAndByDBName(fields []*EntityField) (fieldsByName, fieldsByD
             fieldsByDBName[field.DBName] = v
         }
 
-        if of, ok := schema.FieldsByName[field.Name]; !ok || of.TagSettings["-"] == "-" {
-            schema.FieldsByName[field.Name] = field
+        if v, ok := fieldsByName[field.Name]; !ok {
+            fieldsByName[field.Name] = v
         }
 
         field.setupValuerAndSetter()
     }
+
+    return fieldsByName, fieldsByDBName
 }
 
 func (th *Entity) MakeSlice() reflect.Value {
@@ -211,6 +179,8 @@ func (th *Entity) PrimaryKeyDBName() string {
     return "_id"
 }
 
+var mutex sync.Mutex
+
 func GetOrParse(dest interface{}) (*Entity, error) {
     modelType := reflect.ValueOf(dest).Type()
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
@@ -219,16 +189,30 @@ func GetOrParse(dest interface{}) (*Entity, error) {
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, errors.WithStack(fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest))
+            return nil, fmt.Errorf("%w: %+v", ErrUnsupportedDataType, dest)
         }
-        return nil, errors.WithStack(fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name()))
+        return nil, fmt.Errorf("%w: %v.%v", ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
     }
 
     if v, ok := cacheStore.Load(modelType); ok {
         return v.(*Entity), nil
     }
 
-    return Parse(dest, cacheStore)
+    var entity *Entity
+    mutex.Lock()
+    defer func() {
+        mutex.Unlock()
+    }()
+    if _, ok := cacheStore.Load(modelType); !ok {
+        var err error
+        entity, err = newEntity(dest)
+        if err != nil {
+            return nil, err
+        }
+        cacheStore.Store(modelType, entity)
+    }
+
+    return entity, nil
 }
 
 type StructTags struct {

@@ -1,46 +1,36 @@
 package filter
 
-//func (th *Filter) ParseField(fieldStruct reflect.StructField) *FilterField {
-//
-//    // get name in db
-//    fieldName := th.relativeFieldName(fieldStruct)
-//
-//    field := &FilterField{
-//        Name:              fieldStruct.Name,
-//        RelativeFieldName: fieldName,
-//        FieldType:         fieldStruct.Type,
-//        StructField:       fieldStruct,
-//        Tag:               fieldStruct.Tag,
-//        Schema:            th,
-//    }
-//
-//    field.setupValuerAndSetter()
-//    return field
+//type EntityField struct {
+//    Name           string
+//    DBName         string
+//    PrimaryKey     bool
+//    FieldType      reflect.Type
+//    StructField    reflect.StructField
+//    StructTags     StructTags
+//    Entity *Entity
+//    OwnerSchema    *Entity
+//    ReflectValueOf func(reflect.Value) reflect.Value
+//    ValueOf        func(reflect.Value) (value interface{}, zero bool)
 //}
 //
-//func (th *Filter) relativeFieldName(fieldStruct reflect.StructField) string {
-//    if name, ok := fieldStruct.Tag.Lookup("jfield"); ok && name != "" {
-//        return name
-//    } else {
-//        s := strings.Split(fieldStruct.Name, ",")[0]
-//        s = strings.Trim(s, "")
-//        return strings.ToLower(s)
-//    }
-//}
+//func newField(field reflect.StructField, structTags StructTags) *EntityField {
 //
-//type FilterField struct {
-//    Name              string
-//    RelativeFieldName string
-//    FieldType         reflect.Type
-//    StructField       reflect.StructField
-//    Tag               reflect.StructTag
-//    Schema            *Filter
-//    ReflectValueOf    func(reflect.Value) reflect.Value
-//    ValueOf           func(reflect.Value) (value interface{}, zero bool)
+//    return &EntityField{
+//        Name:           field.Name,
+//        DBName:         structTags.Name,
+//        StructTags:     structTags,
+//        PrimaryKey:     false,
+//        FieldType:      field.Type,
+//        StructField:    field,
+//        Entity: nil,
+//        OwnerSchema:    nil,
+//        ReflectValueOf: nil,
+//        ValueOf:        nil,
+//    }
 //}
 //
 //// create valuer, setter when parse struct
-//func (field *FilterField) setupValuerAndSetter() {
+//func (field *EntityField) setupValuerAndSetter() {
 //    // ValueOf
 //    switch {
 //    case len(field.StructField.Index) == 1:

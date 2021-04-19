@@ -1,49 +1,8 @@
 package entity
 
 import (
-    "jmongo/utils"
     "reflect"
-    "strings"
 )
-
-func (th *Entity) ParseField(fieldStruct reflect.StructField) *EntityField {
-
-    // get name in db
-    dbName := th.fieldDBName(fieldStruct)
-
-    // get tag setting
-    fieldTagSetting := th.fieldTagSetting(fieldStruct)
-
-    field := &EntityField{
-        Name:        fieldStruct.Name,
-        DBName:      dbName,
-        FieldType:   fieldStruct.Type,
-        StructField: fieldStruct,
-        Tag:         fieldStruct.Tag,
-        TagSettings: fieldTagSetting,
-        Schema:      th,
-    }
-
-    field.setupValuerAndSetter()
-    return field
-}
-
-func (th *Entity) fieldTagSetting(fieldStruct reflect.StructField) map[string]string {
-    if name, ok := fieldStruct.Tag.Lookup("jmongo"); ok && name != "" {
-        return utils.ParseTagSetting("jmongo", ";")
-    }
-    return map[string]string{}
-}
-
-func (th *Entity) fieldDBName(fieldStruct reflect.StructField) string {
-    if name, ok := fieldStruct.Tag.Lookup("bson"); ok && name != "" {
-        return name
-    } else {
-        s := strings.Split(fieldStruct.Name, ",")[0]
-        s = strings.Trim(s, "")
-        return strings.ToLower(s)
-    }
-}
 
 type EntityField struct {
     Name           string
@@ -51,50 +10,57 @@ type EntityField struct {
     PrimaryKey     bool
     FieldType      reflect.Type
     StructField    reflect.StructField
-    StructTags     StructTags
-    Schema         *Entity
-    EmbeddedSchema *Entity
-    OwnerSchema    *Entity
+    StructTags StructTags
+    Entity     *Entity
+    Index      []int
     ReflectValueOf func(reflect.Value) reflect.Value
     ValueOf        func(reflect.Value) (value interface{}, zero bool)
 }
 
-func newField(field reflect.StructField, structTags StructTags) *EntityField {
-
-    return &EntityField{
-        Name:           "",
-        DBName:         "",
-        PrimaryKey:     false,
-        FieldType:      nil,
-        StructField:    field,
-        StructTags:     structTags,
-        Schema:         nil,
-        EmbeddedSchema: nil,
-        OwnerSchema:    nil,
-        ReflectValueOf: nil,
-        ValueOf:        nil,
+func newField(structField reflect.StructField, structTags StructTags, entity *Entity, index []int) *EntityField {
+    field := &EntityField{
+        Name:        structField.Name,
+        DBName:      structTags.Name,
+        StructTags:  structTags,
+        PrimaryKey:  structTags.Name == "_id",
+        FieldType:   structField.Type,
+        StructField: structField,
+        Index:       index,
+        Entity:      entity,
     }
+
+    field.setupValuerAndSetter()
+
+    return field
 }
 
 // create valuer, setter when parse struct
 func (field *EntityField) setupValuerAndSetter() {
+
+    var index []int
+    if len(field.Index) > 0 {
+        index = field.Index
+    } else {
+        index = field.StructField.Index
+    }
+
     // ValueOf
     switch {
-    case len(field.StructField.Index) == 1:
+    case len(index) == 1:
         field.ValueOf = func(value reflect.Value) (interface{}, bool) {
-            fieldValue := reflect.Indirect(value).Field(field.StructField.Index[0])
+            fieldValue := reflect.Indirect(value).Field(index[0])
             return fieldValue.Interface(), fieldValue.IsZero()
         }
-    case len(field.StructField.Index) == 2 && field.StructField.Index[0] >= 0:
+    case len(index) == 2 && index[0] >= 0:
         field.ValueOf = func(value reflect.Value) (interface{}, bool) {
-            fieldValue := reflect.Indirect(value).Field(field.StructField.Index[0]).Field(field.StructField.Index[1])
+            fieldValue := reflect.Indirect(value).Field(index[0]).Field(index[1])
             return fieldValue.Interface(), fieldValue.IsZero()
         }
     default:
         field.ValueOf = func(value reflect.Value) (interface{}, bool) {
             v := reflect.Indirect(value)
 
-            for _, idx := range field.StructField.Index {
+            for _, idx := range index {
                 if idx >= 0 {
                     v = v.Field(idx)
                 } else {
@@ -117,25 +83,25 @@ func (field *EntityField) setupValuerAndSetter() {
 
     // ReflectValueOf
     switch {
-    case len(field.StructField.Index) == 1:
+    case len(index) == 1:
         if field.FieldType.Kind() == reflect.Ptr {
             field.ReflectValueOf = func(value reflect.Value) reflect.Value {
-                fieldValue := reflect.Indirect(value).Field(field.StructField.Index[0])
+                fieldValue := reflect.Indirect(value).Field(index[0])
                 return fieldValue
             }
         } else {
             field.ReflectValueOf = func(value reflect.Value) reflect.Value {
-                return reflect.Indirect(value).Field(field.StructField.Index[0])
+                return reflect.Indirect(value).Field(index[0])
             }
         }
-    case len(field.StructField.Index) == 2 && field.StructField.Index[0] >= 0 && field.FieldType.Kind() != reflect.Ptr:
+    case len(index) == 2 && index[0] >= 0 && field.FieldType.Kind() != reflect.Ptr:
         field.ReflectValueOf = func(value reflect.Value) reflect.Value {
-            return reflect.Indirect(value).Field(field.StructField.Index[0]).Field(field.StructField.Index[1])
+            return reflect.Indirect(value).Field(index[0]).Field(index[1])
         }
     default:
         field.ReflectValueOf = func(value reflect.Value) reflect.Value {
             v := reflect.Indirect(value)
-            for idx, fieldIdx := range field.StructField.Index {
+            for idx, fieldIdx := range index {
                 if fieldIdx >= 0 {
                     v = v.Field(fieldIdx)
                 } else {
@@ -149,7 +115,7 @@ func (field *EntityField) setupValuerAndSetter() {
                         }
                     }
 
-                    if idx < len(field.StructField.Index)-1 {
+                    if idx < len(index)-1 {
                         v = v.Elem()
                     }
                 }
