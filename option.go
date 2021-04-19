@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"jmongo/errors"
-	"jmongo/schema"
+	"jmongo/entity"
 )
 
 // 排序
@@ -121,7 +121,7 @@ func Merge(options []*FindOption) *FindOption {
 	return current
 }
 
-func (th *FindOption) makeFindOneOptions(schema *schema.Schema) ([]*options.FindOneOptions, error) {
+func (th *FindOption) makeFindOneOptions(schema *entity.Entity) ([]*options.FindOneOptions, error) {
 	option := options.FindOne()
 
 	// 设置偏移
@@ -151,7 +151,7 @@ func (th *FindOption) makeFindOneOptions(schema *schema.Schema) ([]*options.Find
 
 }
 
-func (th *FindOption) makeFindOption(schema *schema.Schema) ([]*options.FindOptions, error) {
+func (th *FindOption) makeFindOption(schema *entity.Entity) ([]*options.FindOptions, error) {
 	option := options.Find()
 
 	// 设置偏移
@@ -186,7 +186,7 @@ func (th *FindOption) makeFindOption(schema *schema.Schema) ([]*options.FindOpti
 
 }
 
-func (th *FindOption) makeProjection(schema *schema.Schema, includes []string, excludes []string) (bson.D, error) {
+func (th *FindOption) makeProjection(schema *entity.Entity, includes []string, excludes []string) (bson.D, error) {
 
 	if len(includes) == 0 && len(excludes) == 0 {
 		return nil, nil
@@ -221,7 +221,7 @@ func (th *FindOption) makeProjection(schema *schema.Schema, includes []string, e
 }
 
 // 创建排序
-func (th *FindOption) makeSort(schema *schema.Schema, sorts []*Sort) (bson.D, error) {
+func (th *FindOption) makeSort(schema *entity.Entity, sorts []*Sort) (bson.D, error) {
 
 	var d bson.D = make([]primitive.E, len(sorts))
 	for index, sort := range th.sorts {

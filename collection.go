@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"jmongo/errors"
-	"jmongo/schema"
+	"jmongo/entity"
 	"jmongo/utils"
 	"reflect"
 	"time"
@@ -25,19 +25,13 @@ func NewMongoCollection(collection *mongo.Collection) *Collection {
 // 封装了一下mongo的查询方法
 func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
 
-	//outValue := reflect.ValueOf(out)
-	//err := mustBeAddressableSlice(outValue)
-	//if err != nil {
-	//	return err
-	//}
-
 	// 则默认所有
 	if filter == nil {
 		filter = bson.M{}
 	}
 
 	// 获取schema
-	_schema, err := schema.GetOrParse(out)
+	_schema, err := entity.GetOrParse(out)
 	if err != nil {
 		return err
 	}
@@ -77,7 +71,7 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 	}
 
 	// 获取schema
-	_schema, err := schema.GetOrParse(out)
+	_schema, err := entity.GetOrParse(out)
 	if err != nil {
 		return false, err
 	}
@@ -111,7 +105,7 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 	return true, nil
 }
 
-func (th *Collection) mustConvertFilter(schema *schema.Schema, filter interface{}) (interface{}, error) {
+func (th *Collection) mustConvertFilter(schema *entity.Entity, filter interface{}) (interface{}, error) {
 	query, count, err := th.convertFilter(schema, filter)
 
 	if err != nil {
@@ -125,7 +119,7 @@ func (th *Collection) mustConvertFilter(schema *schema.Schema, filter interface{
 	return query, nil
 }
 
-func (th *Collection) convertFilter(schema *schema.Schema, filter interface{}) (interface{}, int, error) {
+func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (interface{}, int, error) {
 
 	switch filter.(type) {
 	// 原生M,直接返回
@@ -158,7 +152,8 @@ func (th *Collection) convertFilter(schema *schema.Schema, filter interface{}) (
 	return query, count, err
 }
 
-func (th *Collection) iterStructNonNilColumn(schema *schema.Schema, model interface{}, consumer func(string, reflect.Value, reflect.StructField)) error {
+
+func (th *Collection) iterStructNonNilColumn(schema *entity.Entity, model interface{}, consumer func(string, reflect.Value, reflect.StructField)) error {
 
 	if model == nil {
 		return nil
@@ -175,6 +170,7 @@ func (th *Collection) iterStructNonNilColumn(schema *schema.Schema, model interf
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
+
 
 	for i := 0; i < modelType.NumField(); i++ {
 		field := modelType.Field(i)
@@ -226,7 +222,7 @@ func (th *Collection) Aggregate(ctx context.Context, pipeline interface{}, resul
 }
 
 // 获取属性对应的schemaField
-func (th *Collection) mustSchemaField(fieldName string, schema *schema.Schema) (*schema.Field, error) {
+func (th *Collection) mustSchemaField(fieldName string, schema *entity.Entity) (*entity.EntityField, error) {
 
 	schemaField := schema.LookUpField(fieldName)
 

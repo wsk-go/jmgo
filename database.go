@@ -18,8 +18,8 @@ func NewDatabase(db *mongo.Database) *Database {
     return &Database{db: db}
 }
 
-func (th *Database) Collection(collection string, opts ...*options.CollectionOptions) *Collection {
 
+func (th *Database) Collection(collection string, opts ...*options.CollectionOptions) *Collection {
     return NewMongoCollection(th.db.Collection(collection, opts...))
 }
 
