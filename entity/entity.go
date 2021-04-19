@@ -188,7 +188,7 @@ func (th *Entity) PrimaryKeyDBName() string {
 
 
 var mutex sync.Mutex
-func GetOrParse(dest interface{}) (*Entity, error) {
+func GetOrParse(dest interface{}) (entity *Entity, err error) {
 
     modelType := reflect.ValueOf(dest).Type()
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
@@ -206,13 +206,11 @@ func GetOrParse(dest interface{}) (*Entity, error) {
         return v.(*Entity), nil
     }
 
-    var entity *Entity
     mutex.Lock()
     defer func() {
         mutex.Unlock()
     }()
     if _, ok := cacheStore.Load(modelType); !ok {
-        var err error
         entity, err = newEntity(dest)
         if err != nil {
             return nil, err
