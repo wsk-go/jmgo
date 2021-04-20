@@ -2,10 +2,10 @@ package jmongo
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"jmongo/errortype"
 	"jmongo/entity"
 )
 
@@ -169,6 +169,7 @@ func (th *FindOption) makeFindOption(schema *entity.Entity) ([]*options.FindOpti
 	if err != nil {
 		return nil, err
 	}
+
 	if len(projection) > 0 {
 		option.SetProjection(projection)
 	}
@@ -197,7 +198,7 @@ func (th *FindOption) makeProjection(schema *entity.Entity, includes []string, e
 	for _, include := range th.includes {
 		field := schema.LookUpField(include)
 		if field == nil {
-			return nil, errortype.New(fmt.Sprintf("field %s not found in model %s", include, schema.Name))
+			return nil, errors.New(fmt.Sprintf("field %s not found in model %s", include, schema.Name))
 		}
 
 		projection = append(projection, primitive.E{
@@ -209,7 +210,7 @@ func (th *FindOption) makeProjection(schema *entity.Entity, includes []string, e
 	for _, exclude := range th.excludes {
 		field := schema.LookUpField(exclude)
 		if field == nil {
-			return nil, errortype.New(fmt.Sprintf("field %s not found in model %s", exclude, schema.Name))
+			return nil, errors.New(fmt.Sprintf("field %s not found in model %s", exclude, schema.Name))
 		}
 
 		projection = append(projection, primitive.E{
@@ -227,7 +228,7 @@ func (th *FindOption) makeSort(schema *entity.Entity, sorts []*Sort) (bson.D, er
 	for index, sort := range th.sorts {
 		field := schema.LookUpField(sort.Field)
 		if field == nil {
-			return nil, errortype.New(fmt.Sprintf("field %s not found in model %s", sort.Field, schema.Name))
+			return nil, errors.New(fmt.Sprintf("field %s not found in model %s", sort.Field, schema.Name))
 		}
 		var asc = 1
 		if !sort.Asc {

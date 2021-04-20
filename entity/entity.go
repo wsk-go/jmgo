@@ -116,7 +116,7 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
             continue
         }
 
-        field, err := newField(structField, structTags, index)
+        field, err := newField(structField, structTags, cloneIndex)
         if err != nil {
             return nil, nil, err
         }

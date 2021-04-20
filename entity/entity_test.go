@@ -13,7 +13,7 @@ type Order struct {
 type User struct {
 	Order `bson:"_,inline"`
 	Name  *string `bson:"name"`
-	Name2 string  `bson:"name333,inline"`
+	Name2 string  `bson:"name33"`
 }
 
 func Test_Entity(t *testing.T) {
@@ -39,8 +39,8 @@ func Test_Entity(t *testing.T) {
 
 	uv := reflect.ValueOf(u)
 
-	for _, field := range e.Fields {
-		v, _ := field.ValueOf(uv)
+	for _, field := range e.AllFields {
+		v, _ := field.InlineValueOf(uv)
 		fmt.Println(field.Name, v)
 	}
 

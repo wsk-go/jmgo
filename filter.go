@@ -3,7 +3,6 @@ package jmongo
 import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
-	"jmongo/errortype"
 	"jmongo/utils"
 	"reflect"
 )
@@ -14,7 +13,7 @@ type FilterField struct {
 }
 
 type FilterOperator interface {
-	handle(field *FilterField,  query bson.M)
+	handle(field *FilterField,  query bson.M) error
 }
 
 // operator sign
@@ -76,7 +75,7 @@ func (th Range) handle(field *FilterField, query bson.M) {
 	endIsNil := utils.IsNil(th.End)
 
 	if startIsNil && endIsNil {
-		panic(errortype.New(fmt.Sprintf("start and end in %s at least one is not nil", field.Field.Name)))
+		panic(errors.New(fmt.Sprintf("start and end in %s at least one is not nil", field.Field.Name)))
 	}
 
 	m := bson.M{}

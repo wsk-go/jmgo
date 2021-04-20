@@ -3,6 +3,7 @@ package jmongo
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,25 +23,33 @@ func NewMongoCollection(collection *mongo.Collection) *Collection {
 	return &Collection{collection: collection}
 }
 
+// cond: if value is not bson.M or bson.D or struct, is value will be used as id
 func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
 
-	// 则默认所有
 	if filter == nil {
-		filter = bson.M{}
+		return errors.New("value of filter can not be nil")
 	}
 
-	// 获取schema
-	_schema, err := entity.GetOrParse(out)
+	schema, err := entity.GetOrParse(out)
 	if err != nil {
 		return err
 	}
 
-	// 转化成mongo的配置选项
+	filter, _, err = th.convertFilter(schema, filter)
+	if err != nil {
+		return err
+	}
+
 	var mongoOpts []*options.FindOptions
 	if len(opts) > 0 {
-		mongoOpts, err = Merge(opts).makeFindOption(_schema)
+		opt := Merge(opts)
+		mongoOpts, err = opt.makeFindOption(schema)
 		if err != nil {
 			return err
+		}
+
+		if opt.total != nil {
+			//th.collection.EstimatedDocumentCount()
 		}
 	}
 
@@ -118,6 +127,10 @@ func (th *Collection) mustConvertFilter(schema *entity.Entity, filter interface{
 	return query, nil
 }
 
+func (th *Collection) prepareExec(schema *entity.Entity, filter interface{}) (interface{}, int, error) {
+
+}
+
 func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (interface{}, int, error) {
 
 	switch filter.(type) {
@@ -135,6 +148,7 @@ func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (
 		return bson.M{schema.PrimaryKeyDBName(): filter}, 1, nil
 	}
 
+
 	count := 0
 	query := bson.M{}
 	err := th.iterStructNonNilColumn(schema, filter, func(column string, fieldValue reflect.Value, field reflect.StructField) {
@@ -142,6 +156,7 @@ func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (
 		// handle by the field itself
 		if o, ok := object.(FilterOperator); ok {
 			o.handle(&FilterField{DBName: column, Field: field}, query)
+
 		} else { // default handle
 			query[column] = object
 		}
@@ -462,7 +477,6 @@ func recursiveSet(t reflect.Type, v reflect.Value, result bson.M) {
 			}
 
 		}
-
 	}
 }
 
@@ -471,27 +485,27 @@ type NotMatchError struct {
 	msg string
 }
 
-func NewNotMatchError(msg string) *NotMatchError {
-	return &NotMatchError{msg: msg}
-}
-
-func (n NotMatchError) Error() string {
-	return n.msg
-}
-
-func mustBeAddressableSlice(value reflect.Value) error {
-	if value.Kind() != reflect.Ptr {
-		return fmt.Errorf("results argument must be a pointer to a slice, but was a %s", value.Kind())
-	}
-
-	sliceVal := value.Elem()
-	if sliceVal.Kind() == reflect.Interface {
-		sliceVal = sliceVal.Elem()
-	}
-
-	if sliceVal.Kind() != reflect.Slice {
-		return fmt.Errorf("results argument must be a pointer to a slice, but was a pointer to %s", sliceVal.Kind())
-	}
-
-	return nil
-}
+//func NewNotMatchError(msg string) *NotMatchError {
+//	return &NotMatchError{msg: msg}
+//}
+//
+//func (n NotMatchError) Error() string {
+//	return n.msg
+//}
+//
+//func mustBeAddressableSlice(value reflect.Value) error {
+//	if value.Kind() != reflect.Ptr {
+//		return fmt.Errorf("results argument must be a pointer to a slice, but was a %s", value.Kind())
+//	}
+//
+//	sliceVal := value.Elem()
+//	if sliceVal.Kind() == reflect.Interface {
+//		sliceVal = sliceVal.Elem()
+//	}
+//
+//	if sliceVal.Kind() != reflect.Slice {
+//		return fmt.Errorf("results argument must be a pointer to a slice, but was a pointer to %s", sliceVal.Kind())
+//	}
+//
+//	return nil
+//}
