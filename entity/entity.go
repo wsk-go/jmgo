@@ -2,6 +2,7 @@ package entity
 
 import (
     "fmt"
+    "github.com/pkg/errors"
     "jmongo/errortype"
     "jmongo/utils"
     "reflect"
@@ -14,7 +15,6 @@ type Entity struct {
     Name string
     ModelType reflect.Type
     Collection              string
-
     PrimaryField *EntityField
     DBNames      []string
     PrimaryFields           []*EntityField
@@ -29,7 +29,7 @@ type Entity struct {
 func newEntity(dest interface{}) (*Entity, error) {
 
     if dest == nil {
-        return nil, fmt.Errorf("%w: %s", errortype.ErrUnsupportedDataType, "dest is nil")
+        return nil, errors.WithStack(fmt.Errorf("%w: %s", errortype.ErrUnsupportedDataType, "dest is nil"))
     }
 
     modelType := reflect.ValueOf(dest).Type()
@@ -45,9 +45,9 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, modelType.Name())
+            return nil, errors.WithStack(fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, modelType.Name()))
         }
-        return nil, fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
+        return nil, errors.WithStack(fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name()))
     }
 
     if v, ok := cacheStore.Load(modelType); ok {
@@ -67,13 +67,13 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     entity := &Entity{}
 
     // extract fields from model type
-    fields, err := extractFields(modelType, index)
+    fields, allFields, err := extractFields(modelType, index)
     if err != nil {
         return nil, err
     }
 
     // extract id field from fields
-    idField := extractIdField(fields)
+    idField := extractIdField(allFields)
     if idField == nil {
         return nil, errortype.ErrIdFieldDoesNotExists
     }
@@ -85,6 +85,7 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     entity.Name = modelType.Name()
     entity.ModelType = modelType
     entity.Fields = fields
+    entity.AllFields = fields
     entity.Collection = collectionName
     entity.FieldsByName = fieldsByName
     entity.FieldsByDBName = fieldsByDBName
@@ -92,7 +93,7 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     return entity, nil
 }
 
-func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, err error) {
+func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, allFields []*EntityField, err error) {
 
     // get field
     for i := 0; i < modelType.NumField(); i++ {
@@ -107,7 +108,7 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
         // parse to get bson info
         structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
         if err != nil {
-            return nil, err
+            return nil, nil, err
         }
 
         // filter skip field
@@ -117,15 +118,21 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
 
         field, err := newField(structField, structTags, index)
         if err != nil {
-            return nil, err
+            return nil, nil, err
         }
         fields = append(fields, field)
+        if field.Entity != nil {
+            allFields = append(allFields, field.Entity.Fields...)
+        } else {
+            allFields = append(allFields, field)
+        }
     }
 
-    return fields, nil
+    return fields, allFields, nil
 }
 
 func extractIdField(fields []*EntityField) *EntityField {
+
     var idField *EntityField
     for _, field := range fields {
         if field.Entity != nil {
@@ -197,9 +204,9 @@ func GetOrParse(dest interface{}) (entity *Entity, err error) {
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
-            return nil, fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, dest)
+            return nil, errors.WithStack(fmt.Errorf("%w: %+v", errortype.ErrUnsupportedDataType, dest))
         }
-        return nil, fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name())
+        return nil, errors.WithStack(fmt.Errorf("%w: %v.%v", errortype.ErrUnsupportedDataType, modelType.PkgPath(), modelType.Name()))
     }
 
     if v, ok := cacheStore.Load(modelType); ok {

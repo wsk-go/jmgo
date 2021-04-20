@@ -2,4 +2,7 @@ module jmongo
 
 go 1.15
 
-require go.mongodb.org/mongo-driver v1.5.1
+require (
+	github.com/pkg/errors v0.9.1 // indirect
+	go.mongodb.org/mongo-driver v1.5.1
+)
