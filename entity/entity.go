@@ -119,6 +119,7 @@ func extractFields(modelType reflect.Type, index []int) ([]*EntityField, []*Enti
         // struct field and mongo
         var entity *Entity
         if len(index) == 0 && (structField.Anonymous || (structField.Type.Kind() == reflect.Struct && structTags.Inline)) {
+
             entity, err = newEntityByModelType(structField.Type, index)
             if err != nil {
                 return nil, nil, err
