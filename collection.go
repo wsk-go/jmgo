@@ -10,6 +10,7 @@ import (
     "jmongo/entity"
     "jmongo/errortype"
     "jmongo/utils"
+    filterPkg "jmongo/filter"
     "reflect"
     "time"
 )
@@ -30,6 +31,7 @@ func (th *Collection) Find(ctx context.Context, filter interface{}, out interfac
         return errors.New("value of filter can not be nil")
     }
 
+
     schema, err := entity.GetOrParse(out)
     if err != nil {
         return err
@@ -49,7 +51,11 @@ func (th *Collection) Find(ctx context.Context, filter interface{}, out interfac
         }
 
         if opt.total != nil {
-            th.Count()
+            count, err := th.count(ctx, filter)
+            if err != nil {
+                return err
+            }
+            *opt.total = count
         }
     }
 
@@ -127,27 +133,6 @@ func (th *Collection) mustConvertFilter(schema *entity.Entity, filter interface{
     return query, nil
 }
 
-func (th *Collection) prepareFilter(schema *entity.Entity, filter interface{}) (interface{}, int, error) {
-    filter, _, err := th.convertFilter(schema, filter)
-
-    if err != nil {
-        return nil, 0, err
-    }
-
-    var mongoOpts []*options.FindOptions
-    if len(opts) > 0 {
-        opt := Merge(opts)
-        mongoOpts, err = opt.makeFindOption(schema)
-        if err != nil {
-            return err
-        }
-
-        if opt.total != nil {
-            th.Count()
-        }
-    }
-}
-
 func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (interface{}, int, error) {
 
     switch filter.(type) {
@@ -167,6 +152,13 @@ func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (
 
     count := 0
     query := bson.M{}
+
+
+    filterSchema, err := filterPkg.GetOrParse(filter)
+    if err != nil {
+        return nil, 0, err
+    }
+
     err := th.iterStructNonNilColumn(schema, filter, func(column string, fieldValue reflect.Value, field reflect.StructField) {
         object := fieldValue.Interface()
         // handle by the field itself
@@ -180,6 +172,35 @@ func (th *Collection) convertFilter(schema *entity.Entity, filter interface{}) (
     })
 
     return query, count, err
+}
+
+// begin iter all fields in filter
+func (th *Collection) doConvertFilter(value reflect.Value, filterSchema *filterPkg.Filter, entitySchema *entity.Entity, query bson.M) error {
+    for _, filterField := range filterSchema.Fields {
+        fieldValue := filterField.ReflectValueOf(value)
+        if filterField.Entity != nil {
+            err := th.doConvertFilter(fieldValue, filterSchema, entitySchema, query)
+            if err != nil {
+                return err
+            }
+        } else {
+            entityField, err := th.mustSchemaField(filterField.RelativeFieldName, entitySchema)
+            if err != nil {
+                return err
+            }
+            object := fieldValue.Interface()
+            // handle by the field itself
+            if o, ok := object.(FilterOperator); ok {
+                err := o.handle(entityField, filterField, query)
+                if err != nil {
+                    return err
+                }
+            } else { // default handle
+                query[column] = object
+            }
+            count++
+        }
+    }
 }
 
 func (th *Collection) iterStructNonNilColumn(schema *entity.Entity, model interface{}, consumer func(string, reflect.Value, reflect.StructField)) error {
@@ -289,7 +310,7 @@ func (th *Collection) mustSchemaField(fieldName string, schema *entity.Entity) (
     schemaField := schema.LookUpField(fieldName)
 
     if schemaField == nil {
-        return nil, fmt.Errorf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name())
+        return nil, errors.WithStack(fmt.Errorf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
     }
 
     return schemaField, nil
