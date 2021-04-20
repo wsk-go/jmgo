@@ -7,8 +7,10 @@ import (
     "go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
-// 存储时string是ObjectId类型，则会转成ObjectId进行存储
-// 如果是string不是ObjectId类型，抛出异常
+// use this type to indicate objectId string,
+// it throw errortype if value is not valid objectId string in marshaling
+// value with the type will be marshaled into ObjectId and save into mongodb
+// value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type MustObjectIdString string
 
 // bson转go对象
@@ -33,11 +35,6 @@ func (th *MustObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) e
     return nil
 }
 
-func NewMustObjectIdString() ObjectIdString {
-    return ObjectIdString(primitive.NewObjectID().Hex())
-}
-
-// objectString 转bson
 func (th MustObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
     s := string(th)
     id, err := primitive.ObjectIDFromHex(s)
@@ -48,11 +45,16 @@ func (th MustObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
     return bson.MarshalValue(id)
 }
 
-// 如果是string是ObjectId类型，则会转成ObjectId进行存储
-// 如果是string不是ObjectId类型，则会使用string进行存储
+func NewMustObjectIdString() ObjectIdString {
+    return ObjectIdString(primitive.NewObjectID().Hex())
+}
+
+// use this type to indicate objectId string
+// value with the type will be marshaled into ObjectId and save into mongodb
+// value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type ObjectIdString string
 
-// bson转go对象
+
 func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
     if data == nil {
         return nil
@@ -74,7 +76,7 @@ func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error
     return nil
 }
 
-// objectString 转bson
+
 func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
     s := string(th)
     id, err := primitive.ObjectIDFromHex(s)

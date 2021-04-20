@@ -3,7 +3,7 @@ package jmongo
 import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
-	"jmongo/errors"
+	"jmongo/errortype"
 	"jmongo/utils"
 	"reflect"
 )
@@ -76,7 +76,7 @@ func (th Range) handle(field *FilterField, query bson.M) {
 	endIsNil := utils.IsNil(th.End)
 
 	if startIsNil && endIsNil {
-		panic(errors.NewError(fmt.Sprintf("start and end in %s at least one is not nil", field.Field.Name)))
+		panic(errortype.New(fmt.Sprintf("start and end in %s at least one is not nil", field.Field.Name)))
 	}
 
 	m := bson.M{}

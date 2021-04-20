@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"jmongo/errors"
+	"jmongo/errortype"
 	"jmongo/entity"
 	"jmongo/utils"
 	"reflect"
@@ -22,7 +22,6 @@ func NewMongoCollection(collection *mongo.Collection) *Collection {
 	return &Collection{collection: collection}
 }
 
-// 封装了一下mongo的查询方法
 func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
 
 	// 则默认所有
@@ -49,7 +48,7 @@ func (th *Collection) Find(ctx context.Context, filter interface{}, out interfac
 	cursor, err := th.collection.Find(ctx, filter, mongoOpts...)
 
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	defer func() {
@@ -58,7 +57,7 @@ func (th *Collection) Find(ctx context.Context, filter interface{}, out interfac
 
 	err = cursor.All(ctx, out)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	return nil
@@ -89,7 +88,7 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 	one := th.collection.FindOne(ctx, filter, mongoOpts...)
 	err = one.Err()
 	if err != nil {
-		return false, errors.WithStack(err)
+		return false, err
 	}
 
 	// 解析
@@ -99,7 +98,7 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 			return false, nil
 		}
 
-		return false, errors.WithStack(err)
+		return false, err
 	}
 
 	return true, nil
@@ -113,7 +112,7 @@ func (th *Collection) mustConvertFilter(schema *entity.Entity, filter interface{
 	}
 
 	if count == 0 {
-		return nil, errors.NewError("filter not contain any condition, this behavior is not allow")
+		return nil, errortype.New("filter not contain any condition, this behavior is not allow")
 	}
 
 	return query, nil
@@ -227,7 +226,7 @@ func (th *Collection) mustSchemaField(fieldName string, schema *entity.Entity) (
 	schemaField := schema.LookUpField(fieldName)
 
 	if schemaField == nil {
-		return nil, errors.NewError(fmt.Sprintf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
+		return nil, errortype.New(fmt.Sprintf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
 	}
 
 	return schemaField, nil
@@ -342,7 +341,7 @@ func (th *Collection) Update(ctx context.Context, filter interface{}, document i
 	}
 
 	if result.MatchedCount == 0 {
-		return errors.NewError("update fail")
+		return errortype.New("update fail")
 	}
 
 	if d, ok := document.(AfterUpdate); ok {
@@ -482,7 +481,7 @@ func (n NotMatchError) Error() string {
 
 func mustBeAddressableSlice(value reflect.Value) error {
 	if value.Kind() != reflect.Ptr {
-		return errors.WithStack(fmt.Errorf("results argument must be a pointer to a slice, but was a %s", value.Kind()))
+		return fmt.Errorf("results argument must be a pointer to a slice, but was a %s", value.Kind())
 	}
 
 	sliceVal := value.Elem()
@@ -491,7 +490,7 @@ func mustBeAddressableSlice(value reflect.Value) error {
 	}
 
 	if sliceVal.Kind() != reflect.Slice {
-		return errors.WithStack(fmt.Errorf("results argument must be a pointer to a slice, but was a pointer to %s", sliceVal.Kind()))
+		return fmt.Errorf("results argument must be a pointer to a slice, but was a pointer to %s", sliceVal.Kind())
 	}
 
 	return nil

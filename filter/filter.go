@@ -3,7 +3,7 @@ package filter
 //var cacheStore = &sync.Map{}
 //
 //// ErrUnsupportedDataType unsupported data type
-//var ErrUnsupportedDataType = errors.New("unsupported data type")
+//var ErrUnsupportedDataType = errortype.New("unsupported data type")
 //
 //type Entity struct {
 //    // entity name
@@ -12,7 +12,7 @@ package filter
 //    ModelType reflect.Type
 //    // collection
 //    Collection              string
-//    PrioritizedPrimaryField *EntityField
+//    PrimaryField *EntityField
 //    DBNames                 []string
 //    PrimaryFields           []*EntityField
 //    PrimaryFieldDBNames     []string
@@ -76,7 +76,7 @@ package filter
 //    return entity, nil
 //}
 //
-//func extractFields(modelType reflect.Type) ([]*EntityField, error) {
+//func extractFields(modelType reflect.Type) ([]*EntityField, errortype) {
 //    // get field
 //    var fields []*EntityField
 //    for i := 0; i < modelType.NumField(); i++ {
@@ -139,15 +139,15 @@ package filter
 //}
 //
 //func (th *Entity) PrimaryKeyDBName() string {
-//    if th.PrioritizedPrimaryField != nil {
-//        return th.PrioritizedPrimaryField.DBName
+//    if th.PrimaryField != nil {
+//        return th.PrimaryField.DBName
 //    }
 //    return "_id"
 //}
 //
 //var mutex sync.Mutex
 //
-//func GetOrParse(dest interface{}) (*Entity, error) {
+//func GetOrParse(dest interface{}) (*Entity, errortype) {
 //    modelType := reflect.ValueOf(dest).Type()
 //    for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
 //        modelType = modelType.Elem()
@@ -170,7 +170,7 @@ package filter
 //        mutex.Unlock()
 //    }()
 //    if _, ok := cacheStore.Load(modelType); !ok {
-//        var err error
+//        var err errortype
 //        entity, err = newEntity(dest)
 //        if err != nil {
 //            return nil, err
@@ -190,7 +190,7 @@ package filter
 //    Skip      bool
 //}
 //
-//func parseTags(key string, tag string) (StructTags, error) {
+//func parseTags(key string, tag string) (StructTags, errortype) {
 //    var st StructTags
 //    if tag == "-" {
 //        st.Skip = true

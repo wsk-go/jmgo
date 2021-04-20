@@ -70,7 +70,7 @@ func Benchmark(b *testing.B) {
         uv := uv.Field(0)
         for i := 0; i < b.N; i++ {
 
-            for range e.Fields {
+            for _, field := range e.Fields {
                 field.ValueOf(uv)
                 //uv.Field(0)
                 //fmt.Println(field.Name, v)
