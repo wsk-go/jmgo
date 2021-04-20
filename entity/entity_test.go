@@ -7,6 +7,7 @@ import (
 )
 
 type Order struct {
+    Id string `bson:"_id"`
     OrderField string
     OrderField2 string
 }
@@ -68,6 +69,7 @@ func Benchmark(b *testing.B) {
 
     b.Run("jstream", func(b *testing.B) {
         uv := uv.Field(0)
+
         for i := 0; i < b.N; i++ {
 
             for _, field := range e.Fields {

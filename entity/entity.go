@@ -75,7 +75,7 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     // extract id field from fields
     idField := extractIdField(fields)
     if idField == nil {
-        return nil, errortype.ErrIdFieldNotFound
+        return nil, errortype.ErrIdFieldDoesNotExists
     }
 
     // create map for fields by name and by db name

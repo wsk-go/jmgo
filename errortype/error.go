@@ -11,6 +11,6 @@ var (
 	ErrFilterNotContainAnyCondition = errors.New("filter not contain any condition, this behavior is not allow")
 
 	// ErrFilterNotContainAnyCondition filter contain any condition
-	ErrIdFieldNotFound = errors.New("id field does not exits, please add tag bson:\"_id\" on any field you want")
+	ErrIdFieldDoesNotExists = errors.New("id field does not exits, please add tag bson:\"_id\" on any field you want")
 )
 

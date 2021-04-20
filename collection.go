@@ -112,7 +112,7 @@ func (th *Collection) mustConvertFilter(schema *entity.Entity, filter interface{
 	}
 
 	if count == 0 {
-		return nil, errortype.New("filter not contain any condition, this behavior is not allow")
+		return nil, errortype.ErrFilterNotContainAnyCondition
 	}
 
 	return query, nil
@@ -226,7 +226,7 @@ func (th *Collection) mustSchemaField(fieldName string, schema *entity.Entity) (
 	schemaField := schema.LookUpField(fieldName)
 
 	if schemaField == nil {
-		return nil, errortype.New(fmt.Sprintf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name()))
+		return nil, fmt.Errorf("fieldName name %s can not be found in %s", fieldName, schema.ModelType.Name())
 	}
 
 	return schemaField, nil
@@ -341,7 +341,7 @@ func (th *Collection) Update(ctx context.Context, filter interface{}, document i
 	}
 
 	if result.MatchedCount == 0 {
-		return errortype.New("update fail")
+		return fmt.Errorf("update fail")
 	}
 
 	if d, ok := document.(AfterUpdate); ok {
