@@ -6,6 +6,7 @@ import (
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+    "jmongo/entity"
     "time"
 )
 
@@ -19,8 +20,12 @@ func NewDatabase(db *mongo.Database) *Database {
 }
 
 
-func (th *Database) Collection(collection string, opts ...*options.CollectionOptions) *Collection {
-    return NewMongoCollection(th.db.Collection(collection, opts...))
+func (th *Database) Collection(model interface{}, opts ...*options.CollectionOptions) *Collection {
+    schema, err := entity.GetOrParse(model)
+    if err != nil {
+        panic(err)
+    }
+    return NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
 }
 
 

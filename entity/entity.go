@@ -61,7 +61,8 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     if tabler, ok := modelValue.Interface().(CollectionNameSupplier); ok {
         collectionName = tabler.CollectionName()
     } else {
-        collectionName = modelType.Name()
+
+        collectionName = utils.LowerFirst(modelType.Name())
     }
 
     entity := &Entity{}

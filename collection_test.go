@@ -3,9 +3,8 @@ package jmongo
 import (
     "context"
     "fmt"
-    "go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/event"
+    "go.mongodb.org/mongo-driver/bson/primitive"
+    "go.mongodb.org/mongo-driver/event"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
     "jmongo/extype"
@@ -29,9 +28,9 @@ func Test_Raw_Insert(t *testing.T) {
     c := setupMongoClient(MongoUrl)
 
     db := c.Database("test")
-    col := db.Collection("test")
+    col := db.Collection(&Test{})
     ctx := context.Background()
-    result, err := col.InsertOne(ctx, &Test{
+    err := col.InsertOne(ctx, &Test{
         Name:         "abc",
         Age:          8,
         HelloWorld:   123,
@@ -43,75 +42,73 @@ func Test_Raw_Insert(t *testing.T) {
         fmt.Printf("%+v", err)
         return
     }
-
-    fmt.Println(result.InsertedID)
 }
 
-func Test_Raw_Read(t *testing.T) {
+//func Test_Raw_Read(t *testing.T) {
+//
+//    c := setupMongoClient(MongoUrl)
+//    db := c.Database("test")
+//    col := db.Collection("test")
+//    ctx := context.Background()
+//
+//    var test Test
+//    err := col.FindOne(ctx, bson.M{}).Decode(&test)
+//
+//    if err != nil {
+//        fmt.Printf("%+v", err)
+//        return
+//    }
+//
+//    fmt.Println(test)
+//}
+//
+//func Test_FindOne(t *testing.T) {
+//
+//    type Filter struct {
+//        Name string
+//    }
+//
+//    c := NewClient(setupMongoClient(MongoUrl))
+//
+//    db := c.Database("test")
+//    col := db.Collection("test")
+//    ctx := context.Background()
+//
+//    var test Test
+//    _, err := col.FindOne(ctx, &Filter{Name: "abc"}, &test, Option().AddIncludes("Name"))
+//
+//    if err != nil {
+//        fmt.Printf("%+v", err)
+//        return
+//    }
+//
+//    fmt.Println(test)
+//}
+//
+//func Test_Find(t *testing.T) {
+//
+//    type Filter struct {
+//        Name string
+//    }
+//
+//    c := NewClient(setupMongoClient(MongoUrl))
+//
+//    db := c.Database("test")
+//    col := db.Collection("test")
+//    ctx := context.Background()
+//
+//    var test []Test
+//    err := col.Find(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddOrder("Age", true).AddIncludes("Name"))
+//
+//    if err != nil {
+//        fmt.Printf("%+v", err)
+//        return
+//    }
+//
+//    fmt.Println(test)
+//}
 
-    c := setupMongoClient(MongoUrl)
-    db := c.Database("test")
-    col := db.Collection("test")
-    ctx := context.Background()
-
-    var test Test
-    err := col.FindOne(ctx, bson.M{}).Decode(&test)
-
-    if err != nil {
-        fmt.Printf("%+v", err)
-        return
-    }
-
-    fmt.Println(test)
-}
-
-func Test_FindOne(t *testing.T) {
-
-    type Filter struct {
-        Name string
-    }
-
-    c := NewClient(setupMongoClient(MongoUrl))
-
-    db := c.Database("test")
-    col := db.Collection("test")
-    ctx := context.Background()
-
-    var test Test
-    _, err := col.FindOne(ctx, &Filter{Name: "abc"}, &test, Option().AddIncludes("Name"))
-
-    if err != nil {
-        fmt.Printf("%+v", err)
-        return
-    }
-
-    fmt.Println(test)
-}
-
-func Test_Find(t *testing.T) {
-
-    type Filter struct {
-        Name string
-    }
-
-    c := NewClient(setupMongoClient(MongoUrl))
-
-    db := c.Database("test")
-    col := db.Collection("test")
-    ctx := context.Background()
-
-    var test []Test
-    err := col.Find(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddOrder("Age", true).AddIncludes("Name"))
-
-    if err != nil {
-        fmt.Printf("%+v", err)
-        return
-    }
-
-    fmt.Println(test)
-}
-
-func setupMongoClient(mongoUrl string) *mongo.Client {
+func setupMongoClient(mongoUrl string) *Client {
 
     monitorOptions := options.Client().SetMonitor(&event.CommandMonitor{
         Started: func(i context.Context, startedEvent *event.CommandStartedEvent) {
@@ -151,5 +148,5 @@ func setupMongoClient(mongoUrl string) *mongo.Client {
         panic(err)
     }
 
-    return client
+    return NewClient(client)
 }

@@ -20,8 +20,8 @@ type Collection struct {
     lastResumeToken bson.Raw
 }
 
-func NewMongoCollection(collection *mongo.Collection) *Collection {
-    return &Collection{collection: collection}
+func NewMongoCollection(collection *mongo.Collection, schema *entity.Entity) *Collection {
+    return &Collection{collection: collection, schema: schema}
 }
 
 func (th *Collection) checkModel(out interface{}) error {
@@ -268,7 +268,7 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 }
 
 // 创建单个元素
-func (th *Collection) CreateOne(ctx context.Context, model interface{}, opts ...*options.InsertOneOptions) error {
+func (th *Collection) InsertOne(ctx context.Context, model interface{}, opts ...*options.InsertOneOptions) error {
 
     if err := th.checkModel(model); err != nil {
         return err
@@ -291,7 +291,7 @@ func (th *Collection) CreateOne(ctx context.Context, model interface{}, opts ...
 }
 
 // 创建一组内容
-func (th *Collection) CreateAll(ctx context.Context, models []interface{}, opts ...*options.InsertManyOptions) error {
+func (th *Collection) InsertMany(ctx context.Context, models []interface{}, opts ...*options.InsertManyOptions) error {
 
     if err := th.checkModel(models); err != nil {
         return err
@@ -321,10 +321,30 @@ func (th *Collection) CreateAll(ctx context.Context, models []interface{}, opts 
 }
 
 // 返回参数: match 表示更新是否成功
-func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model interface{}, opts ...*options.UpdateOptions) error {
+func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model interface{}, opts ...*options.UpdateOptions) (bool, error) {
+
+    result, err := th.doUpdate(ctx, filter, model, false, opts)
+    if err != nil {
+        return false, err
+    }
+
+    return result.ModifiedCount > 0, err
+}
+
+func (th *Collection) UpdateMany(ctx context.Context, filter interface{}, model interface{}, opts ...*options.UpdateOptions) (int64, error) {
+
+   result, err := th.doUpdate(ctx, filter, model, true, opts)
+    if err != nil {
+        return 0, err
+    }
+
+    return result.ModifiedCount, err
+}
+
+func (th *Collection) doUpdate(ctx context.Context, filter interface{}, model interface{}, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
 
     if err := th.checkModel(model); err != nil {
-        return err
+        return nil, err
     }
 
     if d, ok := model.(BeforeUpdate); ok {
@@ -333,33 +353,38 @@ func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model i
 
     query, count, err := th.convertFilter(filter)
     if err != nil {
-        return err
+        return nil, err
     }
 
     if count == 0 {
-        return errors.WithStack(errortype.ErrFilterNotContainAnyCondition)
+        return nil, errors.WithStack(errortype.ErrFilterNotContainAnyCondition)
     }
 
     update, err := th.mapToUpdate(model)
     if err != nil {
-        return err
+        return nil, err
     }
 
-    result, err := th.collection.UpdateOne(ctx, query, update, opts...)
+    var result *mongo.UpdateResult
 
-    if err != nil {
-        return err
+    if multi {
+        result, err = th.collection.UpdateMany(ctx, query, update, opts...)
+        if err != nil {
+            return nil, err
+        }
+    } else {
+        result, err = th.collection.UpdateOne(ctx, query, update, opts...)
+        if err != nil {
+            return nil, err
+        }
     }
 
-    if result.MatchedCount == 0 {
-        return fmt.Errorf("update fail")
-    }
 
     if d, ok := model.(AfterUpdate); ok {
         d.AfterUpdate()
     }
 
-    return nil
+    return result, nil
 }
 
 func (th *Collection) mapToUpdate(model interface{}) (bson.M, error) {
