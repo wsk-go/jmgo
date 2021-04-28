@@ -95,6 +95,31 @@ func Test_FindOne(t *testing.T) {
     fmt.Println(test)
 }
 
+func Test_FindAll(t *testing.T) {
+
+
+    type Filter struct {
+        Name string
+    }
+
+    c := setupMongoClient(MongoUrl)
+
+    db := c.Database("test")
+    col := db.Collection(&Test{})
+    ctx := context.Background()
+
+    var test []Test
+    err := col.Find(ctx, &Filter{}, &test)
+
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
+
+
+    fmt.Println(test)
+}
+
 //
 //func Test_Find(t *testing.T) {
 //
