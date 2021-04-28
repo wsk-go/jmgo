@@ -7,6 +7,7 @@ import (
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+    "sync"
     "time"
 )
 
@@ -14,6 +15,7 @@ type Database struct {
     db              *mongo.Database
     client          *Client
     lastResumeToken bson.Raw
+    cache           sync.Map
 }
 
 func NewDatabase(db *mongo.Database, client *Client) *Database {
@@ -25,12 +27,20 @@ func (th *Database) Collection(model interface{}, opts ...*options.CollectionOpt
     if err != nil {
         panic(err)
     }
-    return NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
+
+    // try getting from cache
+    if v, ok := th.cache.Load(schema.ModelType); ok {
+        return v.(*Collection)
+    }
+
+    collection := NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
+    th.cache.Store(schema.ModelType, collection)
+    return collection
 }
 
 // open transaction
 func (th *Database) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
-    return th.client.WithTransaction(ctx,fn)
+    return th.client.WithTransaction(ctx, fn)
 }
 
 // listen: 出错直接使用panic
