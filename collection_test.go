@@ -14,15 +14,15 @@ import (
 const MongoUrl = "mongodb://39.106.218.107:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
 
 type Base struct {
-    Like string
+    Like string `bson:"like"`
 }
 
 type Test struct {
-    Base
+    Base         `bson:",inline"`
     Id           extype.ObjectIdString `bson:"_id,omitempty"`
     Name         string                `bson:"name"`
     Age          int                   `bson:"happy"`
-    HelloWorld   int                   `bson:"hello_world"`
+    HelloWorld   int                   `bson:"helloWorld"`
     UserPassword int
     OrderId      extype.ObjectIdString `bson:"orderId,omitempty"`
 }
