@@ -12,17 +12,17 @@ import (
 var cacheStore = &sync.Map{}
 
 type Entity struct {
-    Name string
-    ModelType reflect.Type
-    Collection              string
-    PrimaryField *EntityField
-    DBNames      []string
-    PrimaryFields           []*EntityField
-    PrimaryFieldDBNames     []string
-    Fields                  []*EntityField
-    AllFields               []*EntityField
-    FieldsByName            map[string]*EntityField
-    FieldsByDBName          map[string]*EntityField
+    Name                string
+    ModelType           reflect.Type
+    Collection          string
+    PrimaryField        *EntityField
+    DBNames             []string
+    PrimaryFields       []*EntityField
+    PrimaryFieldDBNames []string
+    Fields              []*EntityField
+    AllFields           []*EntityField
+    FieldsByName        map[string]*EntityField
+    FieldsByDBName      map[string]*EntityField
 }
 
 // get data type from dialector
@@ -193,8 +193,8 @@ func (th *Entity) PrimaryKeyDBName() string {
     return "_id"
 }
 
-
 var mutex sync.Mutex
+
 func GetOrParse(dest interface{}) (entity *Entity, err error) {
 
     modelType := reflect.ValueOf(dest).Type()

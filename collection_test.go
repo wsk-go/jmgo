@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const MongoUrl = "mongodb://39.106.218.107:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
+const MongoUrl = "mongodb://localhost:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
 
 type Test struct {
 	Id           extype.ObjectIdString `bson:"_id"`
@@ -26,6 +26,7 @@ type Test struct {
 func Test_Raw_Insert(t *testing.T) {
 
 	c := setupMongoClient(MongoUrl)
+
 	db := c.Database("test")
 	col := db.Collection("test")
 	ctx := context.Background()
