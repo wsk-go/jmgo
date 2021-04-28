@@ -3,51 +3,37 @@ package filter
 import "reflect"
 
 type FilterField struct {
-    RelativeFieldName    string
-    Name                 string
-    Id                   bool
-    FieldType            reflect.Type
-    StructField          reflect.StructField
-    StructTags           StructTags
-    Entity               *Filter
-    index                int
-    inlineIndex          []int
-    ReflectValueOf       func(reflect.Value) reflect.Value
-    ValueOf              func(reflect.Value) (value interface{}, zero bool)
-    InlineReflectValueOf func(reflect.Value) reflect.Value
-    InlineValueOf        func(reflect.Value) (value interface{}, zero bool)
+    RelativeFieldName string
+    Name              string
+    Id                bool
+    FieldType         reflect.Type
+    StructField       reflect.StructField
+    StructTags        StructTags
+    Entity            *Filter
+    ReflectValueOf    func(reflect.Value) reflect.Value
+    ValueOf           func(reflect.Value) (value interface{}, zero bool)
 }
 
 // structField: reflect field
 // structTags: represents field information, such as whether it is an inline model, name of database field, etc
 // index: the field
-func newField(structField reflect.StructField, structTags StructTags, inlineIndex []int) (entityField *FilterField, err error) {
+func newField(structField reflect.StructField, structTags StructTags, index []int) (entityField *FilterField, err error) {
 
     // get inline entity
     var entity *Filter
 
-    // get index on current entity field
-    var index int
-    if len(inlineIndex) > 0 {
-        index = inlineIndex[len(inlineIndex)-1]
-    }
-
-    inlineValueOf, inlineReflectValueOf := setupValuerAndSetter(inlineIndex, structField.Type)
-    valueOf, reflectValueOf := setupValuerAndSetter([]int{index}, structField.Type)
+    inlineValueOf, inlineReflectValueOf := setupValuerAndSetter(index, structField.Type)
 
     field := &FilterField{
-        RelativeFieldName:    structTags.Name,
-        Name:                 structField.Name,
-        StructTags:           structTags,
-        Id:                   structTags.Name == "_id",
-        FieldType:            structField.Type,
-        StructField:          structField,
-        Entity:               entity,
-        ValueOf:              valueOf,
-        index:                index,
-        ReflectValueOf:       reflectValueOf,
-        InlineReflectValueOf: inlineReflectValueOf,
-        InlineValueOf:        inlineValueOf,
+        RelativeFieldName: structTags.Name,
+        Name:              structField.Name,
+        StructTags:        structTags,
+        Id:                structTags.Name == "_id",
+        FieldType:         structField.Type,
+        StructField:       structField,
+        Entity:            entity,
+        ReflectValueOf:    inlineReflectValueOf,
+        ValueOf:           inlineValueOf,
     }
 
     return field, nil

@@ -12,17 +12,15 @@ import (
 var cacheStore = &sync.Map{}
 
 type Entity struct {
-    Name                string
-    ModelType           reflect.Type
-    Collection          string
-    PrimaryField        *EntityField
-    DBNames             []string
-    PrimaryFields       []*EntityField
-    PrimaryFieldDBNames []string
-    Fields              []*EntityField
-    AllFields           []*EntityField
-    FieldsByName        map[string]*EntityField
-    FieldsByDBName      map[string]*EntityField
+    Name           string
+    ModelType      reflect.Type
+    Collection     string
+    IdField        *EntityField
+    DBNames        []string
+    Fields         []*EntityField
+    //Fields      []*EntityField
+    FieldsByName   map[string]*EntityField
+    FieldsByDBName map[string]*EntityField
 }
 
 // get data type from dialector
@@ -68,15 +66,15 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     entity := &Entity{}
 
     // extract fields from model type
-    fields, allFields, err := extractFields(modelType, index)
+    fields, err := extractFields(modelType, index)
     if err != nil {
         return nil, err
     }
 
     // extract id field from fields
-    idField := extractIdField(allFields)
+    idField := extractIdField(fields)
     if idField == nil {
-        return nil, errortype.ErrIdFieldDoesNotExists
+        return nil, errors.WithStack(errortype.ErrIdFieldDoesNotExists)
     }
 
     // create map for fields by name and by db name
@@ -86,15 +84,15 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
     entity.Name = modelType.Name()
     entity.ModelType = modelType
     entity.Fields = fields
-    entity.AllFields = fields
     entity.Collection = collectionName
     entity.FieldsByName = fieldsByName
     entity.FieldsByDBName = fieldsByDBName
+    entity.IdField = idField
 
     return entity, nil
 }
 
-func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, allFields []*EntityField, err error) {
+func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, err error) {
 
     // get field
     for i := 0; i < modelType.NumField(); i++ {
@@ -109,7 +107,7 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
         // parse to get bson info
         structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
         if err != nil {
-            return nil, nil, err
+            return nil,  err
         }
 
         // filter skip field
@@ -117,35 +115,32 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
             continue
         }
 
-        field, err := newField(structField, structTags, cloneIndex)
-        if err != nil {
-            return nil, nil, err
-        }
-        fields = append(fields, field)
-        if field.Entity != nil {
-            allFields = append(allFields, field.Entity.Fields...)
+        if structTags.Inline {
+            inlineFields, err := extractFields(structField.Type, cloneIndex)
+            if err != nil {
+                return nil, err
+            }
+            fields = append(fields, inlineFields...)
         } else {
-            allFields = append(allFields, field)
+            field, err := newField(structField, structTags, cloneIndex)
+            if err != nil {
+                return nil, err
+            }
+
+            fields = append(fields, field)
         }
     }
 
-    return fields, allFields, nil
+    return fields, nil
 }
 
 func extractIdField(fields []*EntityField) *EntityField {
 
     var idField *EntityField
     for _, field := range fields {
-        if field.Entity != nil {
-            idField = extractIdField(field.Entity.Fields)
-            if idField != nil {
-                break
-            }
-        } else {
-            if field.Id {
-                idField = field
-                break
-            }
+        if field.Id {
+            idField = field
+            break
         }
     }
 
@@ -158,12 +153,12 @@ func makeFieldsByNameAndByDBName(fields []*EntityField) (fieldsByName, fieldsByD
 
     for _, field := range fields {
 
-        if v, ok := fieldsByDBName[field.DBName]; !ok {
-            fieldsByDBName[field.DBName] = v
+        if _, ok := fieldsByDBName[field.DBName]; !ok {
+            fieldsByDBName[field.DBName] = field
         }
 
-        if v, ok := fieldsByName[field.Name]; !ok {
-            fieldsByName[field.Name] = v
+        if _, ok := fieldsByName[field.Name]; !ok {
+            fieldsByName[field.Name] = field
         }
     }
 
@@ -187,9 +182,9 @@ func (th *Entity) LookUpField(name string) *EntityField {
     return nil
 }
 
-func (th *Entity) PrimaryKeyDBName() string {
-    if th.PrimaryField != nil {
-        return th.PrimaryField.DBName
+func (th *Entity) IdDBName() string {
+    if th.IdField != nil {
+        return th.IdField.DBName
     }
     return "_id"
 }
@@ -203,7 +198,6 @@ func GetModelType(dest interface{}) reflect.Type {
     }
     return modelType
 }
-
 
 func GetOrParse(dest interface{}) (entity *Entity, err error) {
 

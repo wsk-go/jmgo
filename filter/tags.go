@@ -1,8 +1,8 @@
 package filter
 
 type StructTags struct {
-    Name      string
-    Skip      bool
+    Name   string
+    Skip   bool
 }
 
 func parseTags(key string, tag string) (StructTags, error) {
@@ -32,4 +32,3 @@ func parseTags(key string, tag string) (StructTags, error) {
 
     return st, nil
 }
-

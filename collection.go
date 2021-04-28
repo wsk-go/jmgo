@@ -35,7 +35,7 @@ func (th *Collection) checkModel(out interface{}) error {
 }
 
 // 封装了一下mongo的查询方法
-func (th *Collection) FindOne(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) (ok bool, err error) {
+func (th *Collection) FindOne(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) (found bool, err error) {
     if err := th.checkModel(out); err != nil {
         return false, err
     }
@@ -54,7 +54,7 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
     if len(opts) > 0 {
         mongoOpts, err = Merge(opts).makeFindOneOptions(th.schema)
         if err != nil {
-            return false, err
+            return false, errors.WithStack(err)
         }
     }
 
@@ -62,15 +62,15 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
     one := th.collection.FindOne(ctx, filter, mongoOpts...)
     err = one.Err()
     if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return false, nil
+        }
         return false, err
     }
 
     // 解析
     err = one.Decode(out)
     if err != nil {
-        if err == mongo.ErrNoDocuments {
-            return false, nil
-        }
         return false, err
     }
 
@@ -157,7 +157,7 @@ func (th *Collection) convertFilter(filter interface{}) (interface{}, int, error
     kind := reflect.Indirect(reflect.ValueOf(filter)).Kind()
     // regard as id if kind is not struct
     if kind != reflect.Struct {
-        return bson.M{th.schema.PrimaryKeyDBName(): filter}, 0, nil
+        return bson.M{th.schema.IdDBName(): filter}, 0, nil
     }
 
     filterSchema, err := filterPkg.GetOrParse(filter)
@@ -184,27 +184,19 @@ func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.F
             continue
         }
 
-        // recursively call self if field is entity
-        if filterField.Entity != nil {
-            err := th.fillToQuery(fieldValue, filterSchema, query)
+        entityField, err := th.mustSchemaField(filterField.RelativeFieldName)
+        if err != nil {
+            return err
+        }
+        object := fieldValue.Interface()
+        // handle by the field itself
+        if o, ok := object.(FilterOperator); ok {
+            err := o.handle(entityField, filterField, query)
             if err != nil {
                 return err
             }
-        } else {
-            entityField, err := th.mustSchemaField(filterField.RelativeFieldName)
-            if err != nil {
-                return err
-            }
-            object := fieldValue.Interface()
-            // handle by the field itself
-            if o, ok := object.(FilterOperator); ok {
-                err := o.handle(entityField, filterField, query)
-                if err != nil {
-                    return err
-                }
-            } else { // default handle
-                query[entityField.DBName] = object
-            }
+        } else { // default handle
+            query[entityField.DBName] = object
         }
     }
 
@@ -338,7 +330,7 @@ func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model i
 
 func (th *Collection) UpdateMany(ctx context.Context, filter interface{}, model interface{}, opts ...*options.UpdateOptions) (int64, error) {
 
-   result, err := th.doUpdate(ctx, filter, model, true, opts)
+    result, err := th.doUpdate(ctx, filter, model, true, opts)
     if err != nil {
         return 0, err
     }
@@ -384,7 +376,6 @@ func (th *Collection) doUpdate(ctx context.Context, filter interface{}, model in
         }
     }
 
-
     if d, ok := model.(AfterUpdate); ok {
         d.AfterUpdate()
     }
@@ -396,8 +387,8 @@ func (th *Collection) mapToUpdate(model interface{}) (bson.M, error) {
     value := reflect.ValueOf(model)
 
     update := bson.M{}
-    for _, field := range th.schema.AllFields {
-        object, zero := field.InlineValueOf(value)
+    for _, field := range th.schema.Fields {
+        object, zero := field.ValueOf(value)
         // continue if field value is zero
         if zero {
             continue

@@ -4,7 +4,6 @@ import (
     "fmt"
     "github.com/pkg/errors"
     "jmongo/errortype"
-    "jmongo/utils"
     "reflect"
     "sync"
 )
@@ -12,10 +11,9 @@ import (
 var cacheStore = &sync.Map{}
 
 type Filter struct {
-    Name                string
-    ModelType           reflect.Type
-    Fields              []*FilterField
-    AllFields           []*FilterField
+    Name      string
+    ModelType reflect.Type
+    Fields    []*FilterField
 }
 
 // get data type from dialector
@@ -51,27 +49,20 @@ func newFilterByModelType(modelType reflect.Type, index []int) (*Filter, error) 
     entity := &Filter{}
 
     // extract fields from model type
-    fields, allFields, err := extractFields(modelType, index)
+    fields, err := extractFields(modelType, index)
     if err != nil {
         return nil, err
-    }
-
-    // extract id field from fields
-    idField := extractIdField(allFields)
-    if idField == nil {
-        return nil, errortype.ErrIdFieldDoesNotExists
     }
 
     // entity
     entity.Name = modelType.Name()
     entity.ModelType = modelType
     entity.Fields = fields
-    entity.AllFields = fields
 
     return entity, nil
 }
 
-func extractFields(modelType reflect.Type, index []int) (fields []*FilterField, allFields []*FilterField, err error) {
+func extractFields(modelType reflect.Type, index []int) (fields []*FilterField, err error) {
 
     // get field
     for i := 0; i < modelType.NumField(); i++ {
@@ -84,9 +75,9 @@ func extractFields(modelType reflect.Type, index []int) (fields []*FilterField, 
         tag := structField.Tag.Get("jfield")
 
         // parse to get bson info
-        structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
+        structTags, err := parseTags(structField.Name, tag)
         if err != nil {
-            return nil, nil, err
+            return nil, err
         }
 
         // filter skip field
@@ -94,39 +85,23 @@ func extractFields(modelType reflect.Type, index []int) (fields []*FilterField, 
             continue
         }
 
-        field, err := newField(structField, structTags, cloneIndex)
-        if err != nil {
-            return nil, nil, err
-        }
-        fields = append(fields, field)
-        if field.Entity != nil {
-            allFields = append(allFields, field.Entity.Fields...)
+        if structField.Anonymous {
+            subFields, err := extractFields(structField.Type, cloneIndex)
+            if err != nil {
+                return nil, err
+            }
+            fields = append(fields, subFields...)
         } else {
-            allFields = append(allFields, field)
+            field, err := newField(structField, structTags, cloneIndex)
+            if err != nil {
+                return nil,  err
+            }
+
+            fields = append(fields, field)
         }
     }
 
-    return fields, allFields, nil
-}
-
-func extractIdField(fields []*FilterField) *FilterField {
-
-    var idField *FilterField
-    for _, field := range fields {
-        if field.Entity != nil {
-            idField = extractIdField(field.Entity.Fields)
-            if idField != nil {
-                break
-            }
-        } else {
-            if field.Id {
-                idField = field
-                break
-            }
-        }
-    }
-
-    return idField
+    return fields, nil
 }
 
 var mutex sync.Mutex

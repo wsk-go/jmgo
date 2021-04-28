@@ -3,7 +3,6 @@ package jmongo
 import (
     "context"
     "fmt"
-    "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/event"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
@@ -15,12 +14,12 @@ import (
 const MongoUrl = "mongodb://39.106.218.107:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
 
 type Test struct {
-    Id           primitive.ObjectID `bson:"_id,omitempty"`
-    Name         string                `bson:"name"`
-    Age          int                   `bson:"happy"`
-    HelloWorld   int                   `bson:"hello_world"`
+    Id           extype.ObjectIdString `bson:"_id,omitempty"`
+    Name         string             `bson:"name"`
+    Age          int                `bson:"happy"`
+    HelloWorld   int                `bson:"hello_world"`
     UserPassword int
-    OrderId      primitive.ObjectID `bson:"orderId,omitempty"`
+    OrderId      extype.ObjectIdString `bson:"orderId,omitempty"`
 }
 
 func Test_Raw_Insert(t *testing.T) {
@@ -35,7 +34,7 @@ func Test_Raw_Insert(t *testing.T) {
         Age:          8,
         HelloWorld:   123,
         UserPassword: 2,
-        OrderId:      primitive.NewObjectID(),
+        OrderId:      extype.NewObjectIdString(),
     })
 
     if err != nil {
@@ -46,45 +45,56 @@ func Test_Raw_Insert(t *testing.T) {
 
 func Test_Raw_Read(t *testing.T) {
 
-   c := setupMongoClient(MongoUrl)
-   db := c.Database("test")
-   col := db.Collection(&Test{})
-   ctx := context.Background()
+    c := setupMongoClient(MongoUrl)
+    db := c.Database("test")
+    col := db.Collection(&Test{})
+    ctx := context.Background()
 
-   var test Test
-   ok, err := col.FindOne(ctx, extype.ObjectIdString("6088e5007f987f7fb64ab94d"), &test)
+    var test Test
+    ok, err := col.FindOne(ctx, extype.ObjectIdString("6088e5007f987f7fb64ab94d"), &test)
 
-   if err != nil {
-       fmt.Printf("%+v", err)
-       return
-   }
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
 
-   fmt.Println(ok)
-   fmt.Println(test)
+    fmt.Println(ok)
+    fmt.Println(test)
 }
-//
-//func Test_FindOne(t *testing.T) {
-//
-//    type Filter struct {
-//        Name string
-//    }
-//
-//    c := NewClient(setupMongoClient(MongoUrl))
-//
-//    db := c.Database("test")
-//    col := db.Collection("test")
-//    ctx := context.Background()
-//
-//    var test Test
-//    _, err := col.FindOne(ctx, &Filter{Name: "abc"}, &test, Option().AddIncludes("Name"))
-//
-//    if err != nil {
-//        fmt.Printf("%+v", err)
-//        return
-//    }
-//
-//    fmt.Println(test)
-//}
+
+func Test_FindOne(t *testing.T) {
+
+    type Base struct {
+        Age int
+    }
+
+    type Filter struct {
+        Base
+        Name string
+    }
+
+    c := setupMongoClient(MongoUrl)
+
+    db := c.Database("test")
+    col := db.Collection(&Test{})
+    ctx := context.Background()
+
+    var test Test
+    found, err := col.FindOne(ctx, &Filter{Base: Base{Age: 123}, Name: "abc"}, &test, Option().AddIncludes("Name"))
+
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
+
+    if !found {
+        fmt.Println("没有")
+        return
+    }
+
+    fmt.Println(test)
+}
+
 //
 //func Test_Find(t *testing.T) {
 //

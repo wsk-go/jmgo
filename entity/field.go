@@ -11,13 +11,13 @@ type EntityField struct {
 	FieldType            reflect.Type
 	StructField          reflect.StructField
 	StructTags           StructTags
-	Entity               *Entity
+	//Entity               *Entity
 	index                int
 	inlineIndex          []int
-	ReflectValueOf       func(reflect.Value) reflect.Value
-	ValueOf              func(reflect.Value) (value interface{}, zero bool)
-	InlineReflectValueOf func(reflect.Value) reflect.Value
-	InlineValueOf        func(reflect.Value) (value interface{}, zero bool)
+	//ReflectValueOf       func(reflect.Value) reflect.Value
+	//ValueOf              func(reflect.Value) (value interface{}, zero bool)
+	ReflectValueOf func(reflect.Value) reflect.Value
+	ValueOf        func(reflect.Value) (value interface{}, zero bool)
 }
 
 // structField: reflect field
@@ -26,13 +26,13 @@ type EntityField struct {
 func newField(structField reflect.StructField, structTags StructTags, inlineIndex []int) (entityField *EntityField, err error) {
 
 	// get inline entity
-	var entity *Entity
-	if structTags.Inline {
-		entity, err = newEntityByModelType(structField.Type, inlineIndex)
-		if err != nil {
-			return nil, err
-		}
-	}
+	//var entity *Entity
+	//if structTags.Inline {
+	//	entity, err = newEntityByModelType(structField.Type, inlineIndex)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
 
 	// get index on current entity field
 	var index int
@@ -41,7 +41,7 @@ func newField(structField reflect.StructField, structTags StructTags, inlineInde
 	}
 
 	inlineValueOf, inlineReflectValueOf := setupValuerAndSetter(inlineIndex, structField.Type)
-	valueOf, reflectValueOf := setupValuerAndSetter([]int{index}, structField.Type)
+	//valueOf, reflectValueOf := setupValuerAndSetter([]int{index}, structField.Type)
 
 	field := &EntityField{
 		Name:                 structField.Name,
@@ -50,12 +50,12 @@ func newField(structField reflect.StructField, structTags StructTags, inlineInde
 		Id:                   structTags.Name == "_id",
 		FieldType:            structField.Type,
 		StructField:          structField,
-		Entity:               entity,
-		ValueOf:              valueOf,
-		index: index,
-		ReflectValueOf:       reflectValueOf,
-		InlineReflectValueOf: inlineReflectValueOf,
-		InlineValueOf:        inlineValueOf,
+		//Entity:               entity,
+		//ValueOf:        valueOf,
+		//ReflectValueOf: reflectValueOf,
+		index:          index,
+		ReflectValueOf: inlineReflectValueOf,
+		ValueOf:        inlineValueOf,
 	}
 
 	return field, nil
