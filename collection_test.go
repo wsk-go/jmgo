@@ -47,6 +47,37 @@ func Test_Raw_Insert(t *testing.T) {
     }
 }
 
+func Test_Raw_InsertTransaction(t *testing.T) {
+    c := setupMongoClient(MongoUrl)
+
+    ctx := context.Background()
+    c.WithTransaction(ctx, func(ctx context.Context) error {
+        db := c.Database("test")
+        col := db.Collection(&Test{})
+        err := col.InsertOne(ctx, &Test{
+            Name:         "abc",
+            Age:          8,
+            HelloWorld:   123,
+            UserPassword: 2,
+            OrderId:      extype.NewObjectIdString(),
+        })
+        if err != nil {
+            return err
+        }
+
+        col.InsertOne(ctx, &Test{
+            Name:         "abc",
+            Age:          8,
+            HelloWorld:   123,
+            UserPassword: 2,
+            OrderId:      extype.NewObjectIdString(),
+        })
+        //return errors.New("test")
+        return nil
+    })
+
+}
+
 func Test_Raw_Read(t *testing.T) {
 
     c := setupMongoClient(MongoUrl)
