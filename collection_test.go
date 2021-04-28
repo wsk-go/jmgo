@@ -1,23 +1,28 @@
 package jmongo
 
 import (
+    "code.aliyun.com/jgo/jmongo/extype"
     "context"
     "fmt"
     "go.mongodb.org/mongo-driver/event"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
-    "jmongo/extype"
     "testing"
     "time"
 )
 
 const MongoUrl = "mongodb://39.106.218.107:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
 
+type Base struct {
+    Like string
+}
+
 type Test struct {
+    Base
     Id           extype.ObjectIdString `bson:"_id,omitempty"`
-    Name         string             `bson:"name"`
-    Age          int                `bson:"happy"`
-    HelloWorld   int                `bson:"hello_world"`
+    Name         string                `bson:"name"`
+    Age          int                   `bson:"happy"`
+    HelloWorld   int                   `bson:"hello_world"`
     UserPassword int
     OrderId      extype.ObjectIdString `bson:"orderId,omitempty"`
 }
@@ -95,7 +100,6 @@ func Test_FindOne(t *testing.T) {
 }
 
 func Test_FindAll(t *testing.T) {
-
 
     type Filter struct {
         Name string

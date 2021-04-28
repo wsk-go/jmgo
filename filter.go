@@ -4,9 +4,9 @@ import (
     "errors"
     "fmt"
     "go.mongodb.org/mongo-driver/bson"
-    "jmongo/entity"
-    "jmongo/filter"
-    "jmongo/utils"
+    "code.aliyun.com/jgo/jmongo/entity"
+    "code.aliyun.com/jgo/jmongo/filter"
+    "code.aliyun.com/jgo/jmongo/utils"
 )
 
 type FilterOperator interface {

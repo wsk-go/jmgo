@@ -3,7 +3,7 @@ package filter
 import (
     "fmt"
     "github.com/pkg/errors"
-    "jmongo/errortype"
+    "code.aliyun.com/jgo/jmongo/errortype"
     "reflect"
     "sync"
 )

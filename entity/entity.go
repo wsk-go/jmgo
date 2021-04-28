@@ -1,10 +1,10 @@
 package entity
 
 import (
+    "code.aliyun.com/jgo/jmongo/errortype"
+    "code.aliyun.com/jgo/jmongo/utils"
     "fmt"
     "github.com/pkg/errors"
-    "jmongo/errortype"
-    "jmongo/utils"
     "reflect"
     "sync"
 )
@@ -12,12 +12,12 @@ import (
 var cacheStore = &sync.Map{}
 
 type Entity struct {
-    Name           string
-    ModelType      reflect.Type
-    Collection     string
-    IdField        *EntityField
-    DBNames        []string
-    Fields         []*EntityField
+    Name       string
+    ModelType  reflect.Type
+    Collection string
+    IdField    *EntityField
+    DBNames    []string
+    Fields     []*EntityField
     //Fields      []*EntityField
     FieldsByName   map[string]*EntityField
     FieldsByDBName map[string]*EntityField
@@ -107,12 +107,16 @@ func extractFields(modelType reflect.Type, index []int) (fields []*EntityField, 
         // parse to get bson info
         structTags, err := parseTags(utils.LowerFirst(structField.Name), tag)
         if err != nil {
-            return nil,  err
+            return nil, err
         }
 
         // filter skip field
         if structTags.Skip {
             continue
+        }
+
+        if structField.Anonymous && !structTags.Inline {
+            return nil, errors.New("anonymous field must set inline tag")
         }
 
         if structTags.Inline {

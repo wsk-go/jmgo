@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"jmongo/entity"
+	"code.aliyun.com/jgo/jmongo/entity"
 )
 
 // 排序
