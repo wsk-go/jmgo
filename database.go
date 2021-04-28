@@ -1,24 +1,24 @@
 package jmongo
 
 import (
+    "code.aliyun.com/jgo/jmongo/entity"
     "context"
     "fmt"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
-    "code.aliyun.com/jgo/jmongo/entity"
     "time"
 )
 
 type Database struct {
-    db *mongo.Database
+    db              *mongo.Database
+    client          *Client
     lastResumeToken bson.Raw
 }
 
-func NewDatabase(db *mongo.Database) *Database {
-    return &Database{db: db}
+func NewDatabase(db *mongo.Database, client *Client) *Database {
+    return &Database{db: db, client: client}
 }
-
 
 func (th *Database) Collection(model interface{}, opts ...*options.CollectionOptions) *Collection {
     schema, err := entity.GetOrParse(model)
@@ -28,6 +28,10 @@ func (th *Database) Collection(model interface{}, opts ...*options.CollectionOpt
     return NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
 }
 
+// open transaction
+func (th *Database) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+    return th.client.WithTransaction(ctx,fn)
+}
 
 // listen: 出错直接使用panic
 func (th *Database) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {

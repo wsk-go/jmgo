@@ -4,6 +4,7 @@ import (
     "code.aliyun.com/jgo/jmongo/extype"
     "context"
     "fmt"
+    "github.com/pkg/errors"
     "go.mongodb.org/mongo-driver/event"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
@@ -51,8 +52,8 @@ func Test_Raw_InsertTransaction(t *testing.T) {
     c := setupMongoClient(MongoUrl)
 
     ctx := context.Background()
-    c.WithTransaction(ctx, func(ctx context.Context) error {
-        db := c.Database("test")
+    db := c.Database("test")
+    db.WithTransaction(ctx, func(ctx context.Context) error {
         col := db.Collection(&Test{})
         err := col.InsertOne(ctx, &Test{
             Name:         "abc",
@@ -72,8 +73,7 @@ func Test_Raw_InsertTransaction(t *testing.T) {
             UserPassword: 2,
             OrderId:      extype.NewObjectIdString(),
         })
-        //return errors.New("test")
-        return nil
+        return errors.New("test")
     })
 
 }

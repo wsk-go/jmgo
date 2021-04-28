@@ -16,7 +16,7 @@ func NewClient(client *mongo.Client) *Client {
 
 // Database returns a handle for a database with the given name configured with the given DatabaseOptions.
 func (c *Client) Database(name string, opts ...*options.DatabaseOptions) *Database {
-    return NewDatabase(c.client.Database(name, opts...))
+    return NewDatabase(c.client.Database(name, opts...), c)
 }
 
 // open transaction
