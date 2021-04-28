@@ -24,8 +24,22 @@ func NewMongoCollection(collection *mongo.Collection) *Collection {
     return &Collection{collection: collection}
 }
 
+func (th *Collection) checkModel(out interface{}) error {
+    modelType := entity.GetModelType(out)
+
+    if !th.schema.ModelType.AssignableTo(modelType) {
+        return errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
+    }
+
+    return nil
+}
+
 // 封装了一下mongo的查询方法
 func (th *Collection) FindOne(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) (ok bool, err error) {
+    if err := th.checkModel(out); err != nil {
+        return false, err
+    }
+
     if filter == nil {
         filter = bson.M{}
     }
@@ -60,6 +74,10 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
 
 // cond: if value is not bson.M or bson.D or struct, is value will be used as id
 func (th *Collection) Find(ctx context.Context, filter interface{}, out interface{}, opts ...*FindOption) error {
+
+    if err := th.checkModel(out); err != nil {
+        return err
+    }
 
     if filter == nil {
         return errors.New("value of filter can not be nil")
@@ -105,7 +123,6 @@ func (th *Collection) Find(ctx context.Context, filter interface{}, out interfac
 
     return nil
 }
-
 
 func (th *Collection) mustConvertFilter(filter interface{}) (interface{}, error) {
     query, count, err := th.convertFilter(filter)
@@ -251,7 +268,11 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 }
 
 // 创建单个元素
-func (th *Collection) CreateOne(ctx context.Context, model interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+func (th *Collection) CreateOne(ctx context.Context, model interface{}, opts ...*options.InsertOneOptions) error {
+
+    if err := th.checkModel(model); err != nil {
+        return err
+    }
 
     if d, ok := model.(BeforeSave); ok {
         d.BeforeSave()
@@ -259,18 +280,22 @@ func (th *Collection) CreateOne(ctx context.Context, model interface{}, opts ...
 
     result, err := th.collection.InsertOne(ctx, model, opts...)
     if err != nil {
-        return nil, err
+        return err
     }
 
     if d, ok := model.(AfterSave); ok {
         d.AfterSave(result.InsertedID)
     }
 
-    return result, nil
+    return nil
 }
 
 // 创建一组内容
 func (th *Collection) CreateAll(ctx context.Context, models []interface{}, opts ...*options.InsertManyOptions) error {
+
+    if err := th.checkModel(models); err != nil {
+        return err
+    }
 
     for _, model := range models {
         if d, ok := model.(BeforeSave); ok {
@@ -298,6 +323,10 @@ func (th *Collection) CreateAll(ctx context.Context, models []interface{}, opts 
 // 返回参数: match 表示更新是否成功
 func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model interface{}, opts ...*options.UpdateOptions) error {
 
+    if err := th.checkModel(model); err != nil {
+        return err
+    }
+
     if d, ok := model.(BeforeUpdate); ok {
         d.BeforeUpdate()
     }
@@ -311,7 +340,7 @@ func (th *Collection) UpdateOne(ctx context.Context, filter interface{}, model i
         return errors.WithStack(errortype.ErrFilterNotContainAnyCondition)
     }
 
-    update,err := th.mapToUpdate(model)
+    update, err := th.mapToUpdate(model)
     if err != nil {
         return err
     }

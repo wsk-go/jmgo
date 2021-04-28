@@ -12,5 +12,8 @@ var (
 
 	// ErrFilterNotContainAnyCondition filter contain any condition
 	ErrIdFieldDoesNotExists = errors.New("id field does not exits, please add tag bson:\"_id\" on any field you want")
+
+	// ErrModelTypeNotMatch
+	ErrModelTypeNotMatchInCollection = errors.New("model type not match in collection")
 )
 

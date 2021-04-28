@@ -195,12 +195,18 @@ func (th *Entity) PrimaryKeyDBName() string {
 
 var mutex sync.Mutex
 
-func GetOrParse(dest interface{}) (entity *Entity, err error) {
-
+func GetModelType(dest interface{}) reflect.Type {
     modelType := reflect.ValueOf(dest).Type()
     for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
         modelType = modelType.Elem()
     }
+    return modelType
+}
+
+
+func GetOrParse(dest interface{}) (entity *Entity, err error) {
+
+    modelType := GetModelType(dest)
 
     if modelType.Kind() != reflect.Struct {
         if modelType.PkgPath() == "" {
