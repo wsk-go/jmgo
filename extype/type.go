@@ -1,6 +1,7 @@
 package extype
 
 import (
+    "fmt"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/bsontype"
     "go.mongodb.org/mongo-driver/bson/primitive"
@@ -76,16 +77,22 @@ func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error
     return nil
 }
 
-
 func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
     s := string(th)
     id, err := primitive.ObjectIDFromHex(s)
     if err != nil {
-        return bson.MarshalValue(s)
+       return bson.MarshalValue(s)
     }
-    return bson.MarshalValue(id)
+    t, v, err := bson.MarshalValue(id)
+    fmt.Println(t)
+    fmt.Printf("\n%+v\n", err)
+    return t, v, err
 }
 
 func NewObjectIdString() ObjectIdString {
     return ObjectIdString(primitive.NewObjectID().Hex())
+}
+
+func NewObjectIdPtr() primitive.ObjectID {
+    return primitive.NewObjectID()
 }

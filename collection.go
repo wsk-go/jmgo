@@ -44,6 +44,11 @@ func (th *Collection) FindOne(ctx context.Context, filter interface{}, out inter
         filter = bson.M{}
     }
 
+    filter, _, err = th.convertFilter(filter)
+    if err != nil {
+        return false, err
+    }
+
     // 转化成mongo的配置选项
     var mongoOpts []*options.FindOneOptions
     if len(opts) > 0 {

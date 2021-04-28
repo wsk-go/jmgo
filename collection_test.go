@@ -15,12 +15,12 @@ import (
 const MongoUrl = "mongodb://39.106.218.107:27017/?connect=direct&maxPoolSize=50&minPoolSize=10&slaveOk=true"
 
 type Test struct {
-    Id           extype.ObjectIdString `bson:"_id,omitempty"`
+    Id           primitive.ObjectID `bson:"_id,omitempty"`
     Name         string                `bson:"name"`
     Age          int                   `bson:"happy"`
     HelloWorld   int                   `bson:"hello_world"`
     UserPassword int
-    OrderId      extype.ObjectIdString `bson:"orderId,omitempty""`
+    OrderId      primitive.ObjectID `bson:"orderId,omitempty"`
 }
 
 func Test_Raw_Insert(t *testing.T) {
@@ -35,7 +35,7 @@ func Test_Raw_Insert(t *testing.T) {
         Age:          8,
         HelloWorld:   123,
         UserPassword: 2,
-        OrderId:      extype.ObjectIdString(primitive.NewObjectID().Hex()),
+        OrderId:      primitive.NewObjectID(),
     })
 
     if err != nil {
@@ -44,23 +44,24 @@ func Test_Raw_Insert(t *testing.T) {
     }
 }
 
-//func Test_Raw_Read(t *testing.T) {
-//
-//    c := setupMongoClient(MongoUrl)
-//    db := c.Database("test")
-//    col := db.Collection("test")
-//    ctx := context.Background()
-//
-//    var test Test
-//    err := col.FindOne(ctx, bson.M{}).Decode(&test)
-//
-//    if err != nil {
-//        fmt.Printf("%+v", err)
-//        return
-//    }
-//
-//    fmt.Println(test)
-//}
+func Test_Raw_Read(t *testing.T) {
+
+   c := setupMongoClient(MongoUrl)
+   db := c.Database("test")
+   col := db.Collection(&Test{})
+   ctx := context.Background()
+
+   var test Test
+   ok, err := col.FindOne(ctx, extype.ObjectIdString("6088e5007f987f7fb64ab94d"), &test)
+
+   if err != nil {
+       fmt.Printf("%+v", err)
+       return
+   }
+
+   fmt.Println(ok)
+   fmt.Println(test)
+}
 //
 //func Test_FindOne(t *testing.T) {
 //
