@@ -23,7 +23,6 @@ type Test struct {
 }
 
 func Test_Raw_Insert(t *testing.T) {
-
     c := setupMongoClient(MongoUrl)
 
     db := c.Database("test")
@@ -115,7 +114,6 @@ func Test_FindAll(t *testing.T) {
         fmt.Printf("%+v", err)
         return
     }
-
 
     fmt.Println(test)
 }

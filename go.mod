@@ -1,4 +1,4 @@
-module jmongo
+module code.aliyun.com/jgo/jmongo
 
 go 1.15
 
