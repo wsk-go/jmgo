@@ -157,7 +157,11 @@ func (th *Collection) convertFilter(filter interface{}) (interface{}, int, error
     kind := reflect.Indirect(reflect.ValueOf(filter)).Kind()
     // regard as id if kind is not struct
     if kind != reflect.Struct {
-        return bson.M{th.schema.IdDBName(): filter}, 0, nil
+        if kind == reflect.Slice || kind == reflect.Array {
+            return bson.M{th.schema.IdDBName(): bson.M{"$in": filter}}, 0, nil
+        } else {
+            return bson.M{th.schema.IdDBName(): filter}, 0, nil
+        }
     }
 
     filterSchema, err := filterPkg.GetOrParse(filter)
@@ -196,7 +200,16 @@ func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.F
                 return err
             }
         } else { // default handle
-            query[entityField.DBName] = object
+            fieldType := filterField.FieldType
+            if fieldType.Kind() == reflect.Ptr {
+                fieldType = fieldType.Elem()
+            }
+
+            if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
+                query[entityField.DBName] = bson.M{"$in": object}
+            } else {
+                query[entityField.DBName] = object
+            }
         }
     }
 
