@@ -161,7 +161,7 @@ func (th *Collection) convertFilter(filter interface{}) (interface{}, int, error
         if kind == reflect.Slice || kind == reflect.Array {
             return bson.M{th.schema.IdDBName(): bson.M{"$in": utils.TryMapToObjectId(filter)}}, 0, nil
         } else {
-            return bson.M{th.schema.IdDBName():  utils.TryMapToObjectId(filter)}, 0, nil
+            return bson.M{th.schema.IdDBName(): utils.TryMapToObjectId(filter)}, 0, nil
         }
     }
 
@@ -235,6 +235,15 @@ func (th *Collection) Count(ctx context.Context, filter interface{}) (int64, err
         return 0, err
     }
     return th.count(ctx, query)
+}
+
+func (th *Collection) Exists(ctx context.Context, filter interface{}) (bool, error) {
+    query, _, err := th.convertFilter(filter)
+    if err != nil {
+        return false, err
+    }
+    count, err := th.count(ctx, query)
+    return count > 0, err
 }
 
 func (th *Collection) count(ctx context.Context, filter interface{}, opts ...*options.AggregateOptions) (int64, error) {
@@ -425,6 +434,54 @@ func (th *Collection) FindAndModify(ctx context.Context, filter interface{}, doc
     return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
+func (th *Collection) DeleteOne(ctx context.Context, filter interface{}) (bool, error) {
+
+    query, count, err := th.convertFilter(filter)
+    if err != nil {
+        return false, err
+    }
+
+    if count == 0 {
+        return false, errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
+    }
+
+    result, err := th.collection.DeleteOne(ctx, query)
+    if err != nil {
+        return false, err
+    }
+    return result.DeletedCount > 0, nil
+}
+
+func (th *Collection) Delete(ctx context.Context, filter interface{}) (bool, error) {
+    count, err := th.doDelete(ctx, filter, true)
+    return count > 0, err
+}
+
+func (th *Collection) doDelete(ctx context.Context, filter interface{}, multi bool) (int64, error) {
+
+    query, count, err := th.convertFilter(filter)
+    if err != nil {
+        return 0, err
+    }
+
+    if count == 0 {
+        return 0, errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
+    }
+
+    var result *mongo.DeleteResult
+    if multi {
+        result, err = th.collection.DeleteMany(ctx, query)
+    } else {
+        result, err = th.collection.DeleteOne(ctx, query)
+    }
+
+    if err != nil {
+        return 0, err
+    }
+
+    return result.DeletedCount, nil
+}
+
 func (th *Collection) EnsureIndex(model *mongo.IndexModel) (string, error) {
     return th.collection.Indexes().CreateOne(context.Background(), *model)
 }
@@ -476,4 +533,91 @@ func (th *Collection) Watch(opts *options.ChangeStreamOptions, matchStage bson.D
             }
         }()
     }
+}
+
+func (th *Collection) Must(failFunc func() error) *MustExecutor {
+    return &MustExecutor{
+        collection:       th,
+        notExistsHandler: failFunc,
+    }
+}
+
+type MustExecutor struct {
+    collection *Collection
+    // 不存在的时候的的自定义异常
+    notExistsHandler func() error
+}
+
+// 当数据不存在，回调FailError方法
+func (th *MustExecutor) FindOne(ctx context.Context, filter interface{}, out interface{}, options ...*FindOption) error {
+
+    ok, err := th.collection.FindOne(ctx, filter, out, options...)
+
+    if err != nil {
+        return err
+    }
+
+    if !ok {
+        return th.notExistsHandler()
+    }
+
+    return nil
+}
+
+// 当数据不存在，回调FailError方法
+func (th *MustExecutor) Exists(ctx context.Context, filter interface{}) error {
+    ok, err := th.collection.Exists(ctx, filter)
+    if err != nil {
+        return err
+    }
+
+    if !ok {
+        return th.notExistsHandler()
+    }
+
+    return nil
+}
+
+func (th *MustExecutor) UpdateOne(ctx context.Context, filter interface{}, model interface{}) error {
+    ok, err := th.collection.UpdateOne(ctx, filter, model)
+    if err != nil {
+        return err
+    }
+
+    if !ok {
+        return th.notExistsHandler()
+    }
+
+    return nil
+}
+
+// 根据filter来更新一个
+func (th *MustExecutor) DeleteOne(ctx context.Context, filter interface{}) error {
+    ok, err := th.collection.DeleteOne(ctx, filter)
+
+    if err != nil {
+        return err
+    }
+
+    if !ok {
+        return th.notExistsHandler()
+    }
+
+    return nil
+}
+
+// 根据filter来更新一个
+func (th *MustExecutor) Delete(ctx context.Context, filter interface{}) error {
+
+    ok, err := th.collection.Delete(ctx, filter)
+
+    if err != nil {
+        return err
+    }
+
+    if !ok {
+        return th.notExistsHandler()
+    }
+
+    return nil
 }
