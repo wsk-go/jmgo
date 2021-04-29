@@ -5,6 +5,7 @@ import (
     "context"
     "fmt"
     "github.com/pkg/errors"
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/event"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
@@ -116,6 +117,29 @@ func Test_FindOne(t *testing.T) {
 
     var test Test
     found, err := col.FindOne(ctx, &Filter{Base: Base{Age: 123}, Name: "abc"}, &test, Option().AddIncludes("Name"))
+
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
+
+    if !found {
+        fmt.Println("没有")
+        return
+    }
+
+    fmt.Println(test)
+}
+
+func Test_FindOneById(t *testing.T) {
+    c := setupMongoClient(MongoUrl)
+
+    db := c.Database("test")
+    col := db.Collection(&Test{})
+    ctx := context.Background()
+
+    var test Test
+    found, err := col.FindOne(ctx, primitive.NewObjectID().Hex(), &test, Option().AddIncludes("Name"))
 
     if err != nil {
         fmt.Printf("%+v", err)

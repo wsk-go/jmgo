@@ -4,6 +4,7 @@ import (
     "code.aliyun.com/jgo/jmongo/entity"
     "code.aliyun.com/jgo/jmongo/errortype"
     filterPkg "code.aliyun.com/jgo/jmongo/filter"
+    "code.aliyun.com/jgo/jmongo/utils"
     "context"
     "fmt"
     "github.com/pkg/errors"
@@ -158,9 +159,9 @@ func (th *Collection) convertFilter(filter interface{}) (interface{}, int, error
     // regard as id if kind is not struct
     if kind != reflect.Struct {
         if kind == reflect.Slice || kind == reflect.Array {
-            return bson.M{th.schema.IdDBName(): bson.M{"$in": filter}}, 0, nil
+            return bson.M{th.schema.IdDBName(): bson.M{"$in": utils.TryMapToObjectId(filter)}}, 0, nil
         } else {
-            return bson.M{th.schema.IdDBName(): filter}, 0, nil
+            return bson.M{th.schema.IdDBName():  utils.TryMapToObjectId(filter)}, 0, nil
         }
     }
 

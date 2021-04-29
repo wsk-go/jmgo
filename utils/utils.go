@@ -1,6 +1,7 @@
 package utils
 
 import (
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "reflect"
     "strings"
 )
@@ -32,6 +33,37 @@ func IsNil(i interface{}) bool {
 func IsZero(i interface{}) bool {
     value := reflect.ValueOf(i)
     return value.IsZero()
+}
+
+func TryMapToObjectId(id interface{}) interface{} {
+
+    value := reflect.ValueOf(id)
+
+    if value.Kind() == reflect.Slice ||
+        value.Kind() == reflect.Array {
+        objectIds := make([]interface{}, value.Len())
+        for i := 0; i < value.Len(); i++ {
+            objectIds[i] = tryMapToObjectId(value)
+        }
+        return objectIds
+    } else {
+        return tryMapToObjectId(value)
+    }
+}
+
+func tryMapToObjectId(value reflect.Value) interface{} {
+    ele := reflect.Indirect(value)
+    if ele.Kind() == reflect.String {
+        id := ele.String()
+        oid, err := primitive.ObjectIDFromHex(id)
+        if err != nil {
+            return id
+        } else {
+            return oid
+        }
+    } else {
+        return ele.Interface()
+    }
 }
 
 func LowerFirst(s string) string {
