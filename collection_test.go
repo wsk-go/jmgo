@@ -157,7 +157,7 @@ func Test_Count(t *testing.T) {
 
     type Filter struct {
         Name  string
-        Names []string
+        Names []string `jfield:"Name"`
     }
 
     c := setupMongoClient(MongoUrl)
@@ -166,7 +166,9 @@ func Test_Count(t *testing.T) {
     col := db.Collection(&Test{})
     ctx := context.Background()
 
-    count, err := col.Count(ctx, &Filter{})
+    count, err := col.Count(ctx, &Filter{
+        Names: []string{"123", "222"},
+    })
 
     if err != nil {
         fmt.Printf("%+v", err)
