@@ -156,7 +156,8 @@ func Test_FindAll(t *testing.T) {
 func Test_Count(t *testing.T) {
 
     type Filter struct {
-        Name string
+        Name  string
+        Names []string
     }
 
     c := setupMongoClient(MongoUrl)
@@ -174,7 +175,6 @@ func Test_Count(t *testing.T) {
 
     fmt.Println(count)
 }
-
 
 //
 //func Test_Find(t *testing.T) {

@@ -201,9 +201,6 @@ func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.F
             }
         } else { // default handle
             fieldType := filterField.FieldType
-            if fieldType.Kind() == reflect.Ptr {
-                fieldType = fieldType.Elem()
-            }
 
             if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
                 query[entityField.DBName] = bson.M{"$in": object}
