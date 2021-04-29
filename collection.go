@@ -1,15 +1,15 @@
 package jmongo
 
 import (
+    "code.aliyun.com/jgo/jmongo/entity"
+    "code.aliyun.com/jgo/jmongo/errortype"
+    filterPkg "code.aliyun.com/jgo/jmongo/filter"
     "context"
     "fmt"
     "github.com/pkg/errors"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
-    "code.aliyun.com/jgo/jmongo/entity"
-    "code.aliyun.com/jgo/jmongo/errortype"
-    filterPkg "code.aliyun.com/jgo/jmongo/filter"
     "reflect"
     "time"
 )
@@ -216,6 +216,14 @@ func (th *Collection) Aggregate(ctx context.Context, pipeline interface{}, resul
     err = cursor.All(ctx, results)
 
     return err
+}
+
+func (th *Collection) Count(ctx context.Context, filter interface{}) (int64, error) {
+    query, _, err := th.convertFilter(filter)
+    if err != nil {
+        return 0, err
+    }
+    return th.count(ctx, query)
 }
 
 func (th *Collection) count(ctx context.Context, filter interface{}, opts ...*options.AggregateOptions) (int64, error) {

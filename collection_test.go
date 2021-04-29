@@ -153,6 +153,29 @@ func Test_FindAll(t *testing.T) {
     fmt.Println(test)
 }
 
+func Test_Count(t *testing.T) {
+
+    type Filter struct {
+        Name string
+    }
+
+    c := setupMongoClient(MongoUrl)
+
+    db := c.Database("test")
+    col := db.Collection(&Test{})
+    ctx := context.Background()
+
+    count, err := col.Count(ctx, &Filter{})
+
+    if err != nil {
+        fmt.Printf("%+v", err)
+        return
+    }
+
+    fmt.Println(count)
+}
+
+
 //
 //func Test_Find(t *testing.T) {
 //
