@@ -5,19 +5,19 @@ import (
 )
 
 type EntityField struct {
-	Name                 string
-	DBName               string
-	Id                   bool
-	FieldType            reflect.Type
-	StructField          reflect.StructField
-	StructTags           StructTags
+	Name        string
+	DBName      string
+	Id          bool
+	FieldType   reflect.Type
+	StructField reflect.StructField
+	StructTags  StructTags
 	//Entity               *Entity
-	index                int
-	inlineIndex          []int
+	index       int
+	inlineIndex []int
 	//ReflectValueOf       func(reflect.Value) reflect.Value
-	//ValueOf              func(reflect.Value) (value interface{}, zero bool)
+	//ValueOf              func(reflect.Value) (value any, zero bool)
 	ReflectValueOf func(reflect.Value) reflect.Value
-	ValueOf        func(reflect.Value) (value interface{}, zero bool)
+	ValueOf        func(reflect.Value) (value any, zero bool)
 }
 
 // structField: reflect field
@@ -44,12 +44,12 @@ func newField(structField reflect.StructField, structTags StructTags, inlineInde
 	//valueOf, reflectValueOf := setupValuerAndSetter([]int{index}, structField.Type)
 
 	field := &EntityField{
-		Name:                 structField.Name,
-		DBName:               structTags.Name,
-		StructTags:           structTags,
-		Id:                   structTags.Name == "_id",
-		FieldType:            structField.Type,
-		StructField:          structField,
+		Name:        structField.Name,
+		DBName:      structTags.Name,
+		StructTags:  structTags,
+		Id:          structTags.Name == "_id",
+		FieldType:   structField.Type,
+		StructField: structField,
 		//Entity:               entity,
 		//ValueOf:        valueOf,
 		//ReflectValueOf: reflectValueOf,
@@ -61,7 +61,7 @@ func newField(structField reflect.StructField, structTags StructTags, inlineInde
 	return field, nil
 }
 
-type ValueOfFunc func(value reflect.Value) (interface{}, bool)
+type ValueOfFunc func(value reflect.Value) (any, bool)
 type ReflectOfFunc func(value reflect.Value) reflect.Value
 
 // create valuer, setter when parse struct
@@ -70,17 +70,17 @@ func setupValuerAndSetter(index []int, fieldType reflect.Type) (valueOf ValueOfF
 	// ValueOf
 	switch {
 	case len(index) == 1:
-		valueOf = func(value reflect.Value) (interface{}, bool) {
+		valueOf = func(value reflect.Value) (any, bool) {
 			fieldValue := reflect.Indirect(value).Field(index[0])
 			return fieldValue.Interface(), fieldValue.IsZero()
 		}
 	case len(index) == 2 && index[0] >= 0:
-		valueOf = func(value reflect.Value) (interface{}, bool) {
+		valueOf = func(value reflect.Value) (any, bool) {
 			fieldValue := reflect.Indirect(value).Field(index[0]).Field(index[1])
 			return fieldValue.Interface(), fieldValue.IsZero()
 		}
 	default:
-		valueOf = func(value reflect.Value) (interface{}, bool) {
+		valueOf = func(value reflect.Value) (any, bool) {
 			v := reflect.Indirect(value)
 
 			for _, idx := range index {

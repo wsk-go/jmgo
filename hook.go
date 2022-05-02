@@ -1,17 +1,17 @@
 package jmongo
 
 type BeforeSave interface {
-    BeforeSave()
+	BeforeSave()
 }
 
 type AfterSave interface {
-    AfterSave(id interface{})
+	AfterSave(id any)
 }
 
 type BeforeUpdate interface {
-    BeforeUpdate()
+	BeforeUpdate()
 }
 
 type AfterUpdate interface {
-    AfterUpdate()
+	AfterUpdate()
 }

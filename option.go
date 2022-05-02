@@ -1,15 +1,15 @@
 package jmongo
 
 import (
+	"code.aliyun.com/jgo/jmongo/entity"
 	"fmt"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"code.aliyun.com/jgo/jmongo/entity"
 )
 
-// 排序
+// Sort 排序
 type Sort struct {
 	Field string
 	Asc   bool
@@ -45,19 +45,19 @@ func (th *FindOption) WithTotal(total *int64) *FindOption {
 	return th
 }
 
-/// 要选择的属性，注意用模型定义的属性名字，而不是
+// AddIncludes 要选择的属性，注意用模型定义的属性名字，而不是
 func (th *FindOption) AddIncludes(includes ...string) *FindOption {
 	th.includes = append(th.includes, includes...)
 	return th
 }
 
-/// 不选择的属性
+// AddExcludes 不选择的属性
 func (th *FindOption) AddExcludes(excludes ...string) *FindOption {
 	th.excludes = append(th.excludes, excludes...)
 	return th
 }
 
-// 排序
+// AddOrder 排序
 // - fieldName: 属性名字
 // - asc: 是否从小到大排序
 func (th *FindOption) AddOrder(fieldName string, asc bool) *FindOption {
@@ -68,8 +68,7 @@ func (th *FindOption) AddOrder(fieldName string, asc bool) *FindOption {
 	return th
 }
 
-
-// 复制options不存在的配置
+// Merge 复制options不存在的配置
 // 如果options中有属性与当前配置冲突,则使用当前配置
 func (th *FindOption) Merge(options []*FindOption) *FindOption {
 	if len(options) == 0 {
@@ -78,7 +77,7 @@ func (th *FindOption) Merge(options []*FindOption) *FindOption {
 	return Merge(append(options, th))
 }
 
-/// 进行合成
+// Merge  进行合成
 func Merge(options []*FindOption) *FindOption {
 
 	if options == nil || len(options) == 0 {

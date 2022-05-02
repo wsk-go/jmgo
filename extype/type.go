@@ -1,98 +1,97 @@
 package extype
 
 import (
-    "fmt"
-    "go.mongodb.org/mongo-driver/bson"
-    "go.mongodb.org/mongo-driver/bson/bsontype"
-    "go.mongodb.org/mongo-driver/bson/primitive"
-    "go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
+	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
-// use this type to indicate objectId string,
+// MustObjectIdString use this type to indicate objectId string,
 // it throw errortype if value is not valid objectId string in marshaling
 // value with the type will be marshaled into ObjectId and save into mongodb
 // value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type MustObjectIdString string
 
-// bson转go对象
+// UnmarshalBSONValue bson转go对象
 func (th *MustObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
-    if data == nil {
-        return nil
-    }
+	if data == nil {
+		return nil
+	}
 
-    switch t {
-    case bsontype.ObjectID:
-        objectId, _, ok := bsoncore.ReadObjectID(data)
-        if ok {
-            *th = MustObjectIdString(objectId.Hex())
-        }
-    case bsontype.String:
-        s, _, ok := bsoncore.ReadString(data)
-        if ok {
-            *th = MustObjectIdString(s)
-        }
-    }
+	switch t {
+	case bsontype.ObjectID:
+		objectId, _, ok := bsoncore.ReadObjectID(data)
+		if ok {
+			*th = MustObjectIdString(objectId.Hex())
+		}
+	case bsontype.String:
+		s, _, ok := bsoncore.ReadString(data)
+		if ok {
+			*th = MustObjectIdString(s)
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func (th MustObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
-    s := string(th)
-    id, err := primitive.ObjectIDFromHex(s)
-    if err != nil {
-        return bsontype.Null, nil, err
-    }
+	s := string(th)
+	id, err := primitive.ObjectIDFromHex(s)
+	if err != nil {
+		return bsontype.Null, nil, err
+	}
 
-    return bson.MarshalValue(id)
+	return bson.MarshalValue(id)
 }
 
 func NewMustObjectIdString() ObjectIdString {
-    return ObjectIdString(primitive.NewObjectID().Hex())
+	return ObjectIdString(primitive.NewObjectID().Hex())
 }
 
-// use this type to indicate objectId string
+// ObjectIdString use this type to indicate objectId string
 // value with the type will be marshaled into ObjectId and save into mongodb
 // value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type ObjectIdString string
 
-
 func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
-    if data == nil {
-        return nil
-    }
+	if data == nil {
+		return nil
+	}
 
-    switch t {
-    case bsontype.ObjectID:
-        objectId, _, ok := bsoncore.ReadObjectID(data)
-        if ok {
-            *th = ObjectIdString(objectId.Hex())
-        }
-    case bsontype.String:
-        s, _, ok := bsoncore.ReadString(data)
-        if ok {
-            *th = ObjectIdString(s)
-        }
-    }
+	switch t {
+	case bsontype.ObjectID:
+		objectId, _, ok := bsoncore.ReadObjectID(data)
+		if ok {
+			*th = ObjectIdString(objectId.Hex())
+		}
+	case bsontype.String:
+		s, _, ok := bsoncore.ReadString(data)
+		if ok {
+			*th = ObjectIdString(s)
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
-    s := string(th)
-    id, err := primitive.ObjectIDFromHex(s)
-    if err != nil {
-       return bson.MarshalValue(s)
-    }
-    t, v, err := bson.MarshalValue(id)
-    fmt.Println(t)
-    fmt.Printf("\n%+v\n", err)
-    return t, v, err
+	s := string(th)
+	id, err := primitive.ObjectIDFromHex(s)
+	if err != nil {
+		return bson.MarshalValue(s)
+	}
+	t, v, err := bson.MarshalValue(id)
+	fmt.Println(t)
+	fmt.Printf("\n%+v\n", err)
+	return t, v, err
 }
 
 func NewObjectIdString() ObjectIdString {
-    return ObjectIdString(primitive.NewObjectID().Hex())
+	return ObjectIdString(primitive.NewObjectID().Hex())
 }
 
 func NewObjectIdPtr() primitive.ObjectID {
-    return primitive.NewObjectID()
+	return primitive.NewObjectID()
 }
