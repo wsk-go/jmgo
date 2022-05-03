@@ -6,16 +6,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Collection[M any] struct {
+type Collection[MODEL any, FILTER any] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
-	model           M
 }
 
 // New a collection
-func New[M any](collection *mongo.Collection, schema *entity.Entity, model M) *Collection[M] {
-	return &Collection[M]{collection: collection, schema: schema, model: model}
+func New[MODEL any, FILTER any](collection *mongo.Collection, schema *entity.Entity) *Collection[MODEL, FILTER] {
+	return &Collection[MODEL, FILTER]{collection: collection, schema: schema}
 }
 
 //func (th *Collection) checkModel(out any) error {
@@ -27,9 +26,9 @@ func New[M any](collection *mongo.Collection, schema *entity.Entity, model M) *C
 //
 //	return nil
 //}
-//
-//// FindOne 封装了一下mongo的查询方法
-//func (th *Collection) FindOne(ctx context.Context, filter any, out any, opts ...*FindOption) (found bool, err error) {
+
+//FindOne 封装了一下mongo的查询方法
+//func (th *Collection) FindOne(ctx context.Context, filter any, opts ...*FindOption) (found bool, err error) {
 //	if err := th.checkModel(out); err != nil {
 //		return false, err
 //	}
