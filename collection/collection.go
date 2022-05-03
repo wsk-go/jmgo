@@ -2,19 +2,41 @@ package collection
 
 import (
 	"code.aliyun.com/jgo/jmongo/entity"
+	filterPkg "code.aliyun.com/jgo/jmongo/filter"
+	"code.aliyun.com/jgo/jmongo/utils"
+	"context"
+	"fmt"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"reflect"
+	"sync"
 )
 
-type Collection[MODEL any, FILTER any] struct {
+var cache sync.Map
+
+type Collection[MODEL any, FILTER IFilter] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
 }
 
 // New a collection
-func New[MODEL any, FILTER any](collection *mongo.Collection, schema *entity.Entity) *Collection[MODEL, FILTER] {
-	return &Collection[MODEL, FILTER]{collection: collection, schema: schema}
+func New[MODEL any, FILTER IFilter](db *mongo.Database, model MODEL) *Collection[MODEL, FILTER] {
+	schema, err := entity.GetOrParse(model)
+	if err != nil {
+		panic(err)
+	}
+
+	// try getting from cache
+	if v, ok := cache.Load(schema.ModelType); ok {
+		return v.(*Collection[MODEL, FILTER])
+	}
+
+	col := db.Collection(schema.Collection)
+	collection := &Collection[MODEL, FILTER]{collection: col, schema: schema}
+	cache.Store(schema.ModelType, collection)
+	return collection
 }
 
 //func (th *Collection) checkModel(out any) error {
@@ -27,48 +49,40 @@ func New[MODEL any, FILTER any](collection *mongo.Collection, schema *entity.Ent
 //	return nil
 //}
 
-//FindOne 封装了一下mongo的查询方法
-//func (th *Collection) FindOne(ctx context.Context, filter any, opts ...*FindOption) (found bool, err error) {
-//	if err := th.checkModel(out); err != nil {
-//		return false, err
-//	}
-//
-//	if filter == nil {
-//		filter = bson.M{}
-//	}
-//
-//	filter, _, err = th.convertFilter(filter)
-//	if err != nil {
-//		return false, err
-//	}
-//
-//	// 转化成mongo的配置选项
-//	var mongoOpts []*options.FindOneOptions
-//	if len(opts) > 0 {
-//		mongoOpts, err = Merge(opts).makeFindOneOptions(th.schema)
-//		if err != nil {
-//			return false, errors.WithStack(err)
-//		}
-//	}
-//
-//	// 查找
-//	one := th.collection.FindOne(ctx, filter, mongoOpts...)
-//	err = one.Err()
-//	if err != nil {
-//		if err == mongo.ErrNoDocuments {
-//			return false, nil
-//		}
-//		return false, err
-//	}
-//
-//	// 解析
-//	err = one.Decode(out)
-//	if err != nil {
-//		return false, err
-//	}
-//
-//	return true, nil
-//}
+// FindOneByFilter FindOne 封装了一下mongo的查询方法
+func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER) (model MODEL, err error) {
+
+	query, _, err := th.convertFilter(filter)
+	if err != nil {
+		return model, err
+	}
+
+	opt, err := makeFindOneOptions(th.schema, filter)
+	if err != nil {
+		return model, err
+	}
+
+	// 查找
+	one := th.collection.FindOne(ctx, query, opt)
+	err = one.Err()
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return model, nil
+		}
+		return model, err
+	}
+
+	// 解析
+	m := reflect.New(th.schema.ModelType).Interface()
+	err = one.Decode(m)
+	if err != nil {
+		return model, err
+	}
+
+	mm, _ := MODEL.(m)
+	return mm, nil
+}
+
 //
 //// cond: if value is not bson.M or bson.D or struct, is value will be used as id
 //func (th *Collection) Find(ctx context.Context, filter any, out any, opts ...*FindOption) error {
@@ -135,76 +149,68 @@ func New[MODEL any, FILTER any](collection *mongo.Collection, schema *entity.Ent
 //
 //	return query, nil
 //}
-//
-//func (th *Collection) convertFilter(filter any) (any, int, error) {
-//
-//	switch v := filter.(type) {
-//	// 原生M,直接返回
-//	case bson.M:
-//		return v, len(v), nil
-//		// 原生D,直接返回
-//	case bson.D:
-//		return v, len(v), nil
-//	}
-//
-//	kind := reflect.Indirect(reflect.ValueOf(filter)).Kind()
-//	// regard as id if kind is not struct
-//	if kind != reflect.Struct {
-//		if kind == reflect.Slice || kind == reflect.Array {
-//			return bson.M{th.schema.IdDBName(): bson.M{"$in": utils.TryMapToObjectId(filter)}}, 0, nil
-//		} else {
-//			return bson.M{th.schema.IdDBName(): utils.TryMapToObjectId(filter)}, 0, nil
-//		}
-//	}
-//
-//	filterSchema, err := filterPkg.GetOrParse(filter)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//
-//	query := bson.M{}
-//	value := reflect.ValueOf(filter)
-//	err = th.fillToQuery(value, filterSchema, query)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//
-//	return query, len(query), err
-//}
-//
-//// begin iter all fields in filter
-//func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
-//	for _, filterField := range filterSchema.Fields {
-//		fieldValue := filterField.ReflectValueOf(value)
-//		// continue if field value is zero
-//		if fieldValue.IsZero() {
-//			continue
-//		}
-//
-//		entityField, err := th.mustSchemaField(filterField.RelativeFieldName)
-//		if err != nil {
-//			return err
-//		}
-//		object := fieldValue.Interface()
-//		// handle by the field itself
-//		if o, ok := object.(FilterOperator); ok {
-//			err := o.handle(entityField, filterField, query)
-//			if err != nil {
-//				return err
-//			}
-//		} else { // default handle
-//			fieldType := filterField.FieldType
-//
-//			if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
-//				query[entityField.DBName] = bson.M{"$in": object}
-//			} else {
-//				query[entityField.DBName] = object
-//			}
-//		}
-//	}
-//
-//	return nil
-//}
+
+func (th *Collection[MODEL, FILTER]) convertFilter(filter FILTER) (any, int, error) {
+
+	kind := reflect.Indirect(reflect.ValueOf(filter)).Kind()
+	// regard as id if kind is not struct
+	if kind != reflect.Struct {
+		if kind == reflect.Slice || kind == reflect.Array {
+			return bson.M{th.schema.IdDBName(): bson.M{"$in": utils.TryMapToObjectId(filter)}}, 0, nil
+		} else {
+			return bson.M{th.schema.IdDBName(): utils.TryMapToObjectId(filter)}, 0, nil
+		}
+	}
+
+	filterSchema, err := filterPkg.GetOrParse(filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := bson.M{}
+	value := reflect.ValueOf(filter)
+	err = th.fillToQuery(value, filterSchema, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return query, len(query), err
+}
+
+// begin iter all fields in filter
+func (th *Collection[MODEL, FILTER]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
+	for _, filterField := range filterSchema.Fields {
+		fieldValue := filterField.ReflectValueOf(value)
+		// continue if field value is zero
+		if fieldValue.IsZero() {
+			continue
+		}
+
+		entityField, err := th.mustSchemaField(filterField.RelativeFieldName)
+		if err != nil {
+			return err
+		}
+		object := fieldValue.Interface()
+		// handle by the field itself
+		if o, ok := object.(FilterOperator); ok {
+			err := o.handle(entityField, filterField, query)
+			if err != nil {
+				return err
+			}
+		} else { // default handle
+			fieldType := filterField.FieldType
+
+			if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
+				query[entityField.DBName] = bson.M{"$in": object}
+			} else {
+				query[entityField.DBName] = object
+			}
+		}
+	}
+
+	return nil
+}
+
 //func (th *Collection) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
 //	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 //
@@ -272,17 +278,18 @@ func New[MODEL any, FILTER any](collection *mongo.Collection, schema *entity.Ent
 //	return 0, nil
 //}
 //
-//// 获取属性对应的schemaField
-//func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, error) {
-//
-//	schemaField := th.schema.LookUpField(fieldName)
-//
-//	if schemaField == nil {
-//		return nil, errors.WithStack(fmt.Errorf("fieldName name %s can not be found in %s", fieldName, th.schema.ModelType.Name()))
-//	}
-//
-//	return schemaField, nil
-//}
+// 获取属性对应的schemaField
+func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, error) {
+
+	schemaField := th.schema.LookUpField(fieldName)
+
+	if schemaField == nil {
+		return nil, errors.WithStack(fmt.Errorf("fieldName name %s can not be found in %s", fieldName, th.schema.ModelType.Name()))
+	}
+
+	return schemaField, nil
+}
+
 //
 //// 创建单个元素
 //func (th *Collection) InsertOne(ctx context.Context, model any, opts ...*options.InsertOneOptions) error {

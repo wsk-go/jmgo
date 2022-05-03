@@ -216,7 +216,7 @@ func Test_Count(t *testing.T) {
 //    ctx := context.Background()
 //
 //    var test []Test
-//    err := col.Find(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddOrder("Age", true).AddIncludes("Name"))
+//    err := col.Find(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddSort("Age", true).AddIncludes("Name"))
 //
 //    if err != nil {
 //        fmt.Printf("%+v", err)
@@ -269,3 +269,16 @@ func setupMongoClient(mongoUrl string) *Client {
 
 	return NewClient(client)
 }
+
+type User struct {
+}
+
+//func Test_Raw_Insert2(t *testing.T) {
+//	t := reflect.TypeOf(User{})
+//
+//}
+//
+//func newMake[T any](t reflect.Type) T {
+//	a := reflect.New(t)
+//	return a.Interface()
+//}

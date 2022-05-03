@@ -1,11 +1,11 @@
 package filter
 
 import (
-    "code.aliyun.com/jgo/jmongo/errortype"
-    "fmt"
-    "github.com/pkg/errors"
-    "reflect"
-    "sync"
+	"code.aliyun.com/jgo/jmongo/errortype"
+	"fmt"
+	"github.com/pkg/errors"
+	"reflect"
+	"sync"
 )
 
 var cacheStore = &sync.Map{}
@@ -72,7 +72,7 @@ func extractFields(modelType reflect.Type, index []int) (fields []*FilterField, 
 		cloneIndex = append(cloneIndex, i)
 
 		structField := modelType.Field(i)
-		tag := structField.Tag.Get("jfield")
+		tag := structField.Tag.Get("bson")
 
 		// parse to get bson info
 		structTags, err := parseTags(structField.Name, tag)

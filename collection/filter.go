@@ -1,6 +1,6 @@
 package collection
 
-type Order struct {
+type Sort struct {
 	Field string
 	Asc   bool
 }
@@ -17,14 +17,17 @@ type IFilter interface {
 
 	// AddIncludes 要选择的属性，注意用模型定义的属性名字，而不是
 	AddIncludes(includes ...string)
+	Includes() []string
 
 	// AddExcludes 不选择的属性
 	AddExcludes(excludes ...string)
+	Excludes() []string
 
-	// AddOrder 排序
+	// AddSort 排序
 	// - fieldName: 属性名字
 	// - asc: 是否从小到大排序
-	AddOrder(fieldName string, asc bool)
+	AddSort(fieldName string, asc bool)
+	Sorts() []*Sort
 }
 
 // Filter 过滤实现
@@ -34,7 +37,7 @@ type Filter struct {
 	total    *int64
 	includes []string
 	excludes []string
-	orders   []*Order
+	sorts    []*Sort
 }
 
 func (th *Filter) Skip() int {
@@ -83,12 +86,16 @@ func (th *Filter) AddExcludes(excludes ...string) {
 	th.excludes = append(th.excludes, excludes...)
 }
 
-// AddOrder 排序
+// AddSort 排序
 // - fieldName: 属性名字
 // - asc: 是否从小到大排序
-func (th *Filter) AddOrder(fieldName string, asc bool) {
-	th.orders = append(th.orders, &Order{
+func (th *Filter) AddSort(fieldName string, asc bool) {
+	th.sorts = append(th.sorts, &Sort{
 		Field: fieldName,
 		Asc:   asc,
 	})
+}
+
+func (th *Filter) Sorts() []*Sort {
+	return th.sorts
 }
