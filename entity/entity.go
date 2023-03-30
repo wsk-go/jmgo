@@ -1,9 +1,9 @@
 package entity
 
 import (
-	"code.aliyun.com/jgo/jmongo/errortype"
-	"code.aliyun.com/jgo/jmongo/utils"
 	"fmt"
+	"github.com/JackWSK/jmongo/errortype"
+	"github.com/JackWSK/jmongo/utils"
 	"github.com/pkg/errors"
 	"reflect"
 	"sync"

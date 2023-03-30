@@ -1,8 +1,8 @@
 package filter
 
 import (
-	"code.aliyun.com/jgo/jmongo/errortype"
 	"fmt"
+	"github.com/JackWSK/jmongo/errortype"
 	"github.com/pkg/errors"
 	"reflect"
 	"sync"

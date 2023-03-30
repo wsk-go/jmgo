@@ -1,12 +1,12 @@
 package jmongo
 
 import (
-	"code.aliyun.com/jgo/jmongo/entity"
-	"code.aliyun.com/jgo/jmongo/errortype"
-	filterPkg "code.aliyun.com/jgo/jmongo/filter"
-	"code.aliyun.com/jgo/jmongo/utils"
 	"context"
 	"fmt"
+	"github.com/JackWSK/jmongo/entity"
+	"github.com/JackWSK/jmongo/errortype"
+	filterPkg "github.com/JackWSK/jmongo/filter"
+	"github.com/JackWSK/jmongo/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"

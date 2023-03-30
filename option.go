@@ -1,8 +1,8 @@
 package jmongo
 
 import (
-	"code.aliyun.com/jgo/jmongo/entity"
 	"fmt"
+	"github.com/JackWSK/jmongo/entity"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

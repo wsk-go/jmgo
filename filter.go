@@ -1,11 +1,11 @@
 package jmongo
 
 import (
-	"code.aliyun.com/jgo/jmongo/entity"
-	"code.aliyun.com/jgo/jmongo/filter"
-	"code.aliyun.com/jgo/jmongo/utils"
 	"errors"
 	"fmt"
+	"github.com/JackWSK/jmongo/entity"
+	"github.com/JackWSK/jmongo/filter"
+	"github.com/JackWSK/jmongo/utils"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
