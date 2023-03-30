@@ -1,4 +1,4 @@
-package extype
+package types
 
 import (
 	"fmt"

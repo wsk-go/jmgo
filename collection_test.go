@@ -3,7 +3,7 @@ package jmongo
 import (
 	"context"
 	"fmt"
-	"github.com/JackWSK/jmongo/extype"
+	"github.com/JackWSK/jmongo/types"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,16 +19,16 @@ type Base struct {
 
 type Test struct {
 	Base         `bson:",inline"`
-	Id           extype.ObjectIdString `bson:"_id,omitempty"`
-	Name         string                `bson:"name"`
-	Age          int                   `bson:"happy"`
-	HelloWorld   int                   `bson:"helloWorld"`
+	Id           types.ObjectIdString `bson:"_id,omitempty"`
+	Name         string               `bson:"name"`
+	Age          int                  `bson:"happy"`
+	HelloWorld   int                  `bson:"helloWorld"`
 	UserPassword int
-	OrderId      extype.ObjectIdString `bson:"orderId,omitempty"`
+	OrderId      types.ObjectIdString `bson:"orderId,omitempty"`
 }
 
 type TestFilter struct {
-	Id extype.ObjectIdString
+	Id types.ObjectIdString
 }
 
 func Test_Raw_Insert(t *testing.T) {
@@ -41,7 +41,7 @@ func Test_Raw_Insert(t *testing.T) {
 		Age:          8,
 		HelloWorld:   123,
 		UserPassword: 2,
-		OrderId:      extype.NewObjectIdString(),
+		OrderId:      types.NewObjectIdString(),
 	})
 
 	if err != nil {
@@ -62,7 +62,7 @@ func Test_Raw_Insert(t *testing.T) {
 //				Age:          8,
 //				HelloWorld:   123,
 //				UserPassword: 2,
-//				OrderId:      extype.NewObjectIdString(),
+//				OrderId:      types.NewObjectIdString(),
 //			})
 //			if err != nil {
 //				return err
@@ -73,7 +73,7 @@ func Test_Raw_Insert(t *testing.T) {
 //				Age:          8,
 //				HelloWorld:   123,
 //				UserPassword: 2,
-//				OrderId:      extype.NewObjectIdString(),
+//				OrderId:      types.NewObjectIdString(),
 //			})
 //			return errors.New("test")
 //		})
