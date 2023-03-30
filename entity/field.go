@@ -25,15 +25,6 @@ type EntityField struct {
 // index: the field
 func newField(structField reflect.StructField, structTags StructTags, inlineIndex []int) (entityField *EntityField, err error) {
 
-	// get inline entity
-	//var entity *Entity
-	//if structTags.Inline {
-	//	entity, err = newEntityByModelType(structField.Type, inlineIndex)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-
 	// get index on current entity field
 	var index int
 	if len(inlineIndex) > 0 {
@@ -41,18 +32,14 @@ func newField(structField reflect.StructField, structTags StructTags, inlineInde
 	}
 
 	inlineValueOf, inlineReflectValueOf := setupValuerAndSetter(inlineIndex, structField.Type)
-	//valueOf, reflectValueOf := setupValuerAndSetter([]int{index}, structField.Type)
 
 	field := &EntityField{
-		Name:        structField.Name,
-		DBName:      structTags.Name,
-		StructTags:  structTags,
-		Id:          structTags.Name == "_id",
-		FieldType:   structField.Type,
-		StructField: structField,
-		//Entity:               entity,
-		//ValueOf:        valueOf,
-		//ReflectValueOf: reflectValueOf,
+		Name:           structField.Name,
+		DBName:         structTags.Name,
+		StructTags:     structTags,
+		Id:             structTags.Name == "_id",
+		FieldType:      structField.Type,
+		StructField:    structField,
 		index:          index,
 		ReflectValueOf: inlineReflectValueOf,
 		ValueOf:        inlineValueOf,
