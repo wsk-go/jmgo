@@ -165,7 +165,7 @@ func Test_Raw_Read(t *testing.T) {
 //		ctx := context.Background()
 //
 //		var test []Test
-//		err := col.Find(ctx, &Filter{}, &test)
+//		err := col.FindByFilter(ctx, &Filter{}, &test)
 //
 //		if err != nil {
 //			fmt.Printf("%+v", err)
@@ -214,7 +214,7 @@ func Test_Raw_Read(t *testing.T) {
 // //    ctx := context.Background()
 // //
 // //    var test []Test
-// //    err := col.Find(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddSort("Age", true).AddIncludes("Name"))
+// //    err := col.FindByFilter(ctx, &Filter{Name: "abc"}, &test, Option().Offset(0).Limit(2).AddSort("Age", true).AddIncludes("Name"))
 // //
 // //    if err != nil {
 // //        fmt.Printf("%+v", err)

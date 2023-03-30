@@ -37,18 +37,13 @@ func NewCollection[MODEL any, FILTER any](model MODEL, database *Database, opts 
 	}
 }
 
-//func (th *Collection[MODEL, FILTER]) checkModel(out any) error {
-//	modelType := entity.GetModelType(out)
-//
-//	if !th.schema.ModelType.AssignableTo(modelType) {
-//		return errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
-//	}
-//
-//	return nil
-//}
+// FindOneByFilter find one by filter
+func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOneOptions) (MODEL, error) {
+	return th.RawFindOneByFilter(ctx, filter, opts...)
+}
 
-// FindOneByFilter 封装了一下mongo的查询方法
-func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER, opts ...*FindOption) (MODEL, error) {
+// RawFindOneByFilter find one by filter
+func (th *Collection[MODEL, FILTER]) RawFindOneByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOneOptions) (MODEL, error) {
 
 	var out MODEL
 
@@ -57,17 +52,8 @@ func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter
 		return out, err
 	}
 
-	// 转化成mongo的配置选项
-	var mongoOpts []*options.FindOneOptions
-	if len(opts) > 0 {
-		mongoOpts, err = Merge(opts).makeFindOneOptions(th.schema)
-		if err != nil {
-			return out, errors.WithStack(err)
-		}
-	}
-
 	// 查找
-	one := th.collection.FindOne(ctx, convertedFilter, mongoOpts...)
+	one := th.collection.FindOne(ctx, convertedFilter, opts...)
 	err = one.Err()
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -85,33 +71,62 @@ func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter
 	return out, nil
 }
 
-// FindListByFilter Find cond: if value is not bson.M or bson.D or struct, is value will be used as id
-func (th *Collection[MODEL, FILTER]) FindListByFilter(ctx context.Context, filter FILTER, opts ...*FindOption) ([]MODEL, error) {
+// FindByFilter list with filter
+func (th *Collection[MODEL, FILTER]) FindByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOptions) ([]MODEL, error) {
+	return th.RawFind(ctx, filter, opts...)
+}
+
+// FindByFilterWithTotal
+// Param total count total if total is not nil
+func (th *Collection[MODEL, FILTER]) FindByFilterWithTotal(ctx context.Context, filter FILTER, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
+	return th.RawFindByFilterWithTotal(ctx, filter, total, opts...)
+}
+
+// RawFindByFilterWithTotal get page
+func (th *Collection[MODEL, FILTER]) RawFindByFilterWithTotal(ctx context.Context, filter any, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var mongoOpts []*options.FindOptions
-	if len(opts) > 0 {
-		opt := Merge(opts)
-		mongoOpts, err = opt.makeFindOption(th.schema)
+	if total != nil {
+		count, err := th.count(ctx, convertedFilter)
 		if err != nil {
 			return nil, err
 		}
-
-		if opt.total != nil {
-			count, err := th.count(ctx, filter)
-			if err != nil {
-				return nil, err
-			}
-			*opt.total = count
-		}
+		*total = count
 	}
 
 	// 查询
-	cursor, err := th.collection.Find(ctx, convertedFilter, mongoOpts...)
+	cursor, err := th.collection.Find(ctx, convertedFilter, opts...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = cursor.Close(ctx)
+	}()
+	var out []MODEL
+	err = cursor.All(ctx, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// RawFind filter type is any,you can use bson.M,bson.D...
+func (th *Collection[MODEL, FILTER]) RawFind(ctx context.Context, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
+
+	convertedFilter, _, err := th.convertFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询
+	cursor, err := th.collection.Find(ctx, convertedFilter, opts...)
 
 	if err != nil {
 		return nil, err
