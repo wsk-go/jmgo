@@ -7,6 +7,7 @@ import (
 	"code.aliyun.com/jgo/jmongo/utils"
 	"context"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,6 +15,8 @@ import (
 	"reflect"
 	"time"
 )
+
+var validate = validator.New()
 
 type Collection[MODEL any, FILTER any] struct {
 	schema          *entity.Entity
@@ -34,15 +37,15 @@ func NewCollection[MODEL any, FILTER any](model MODEL, database *Database, opts 
 	}
 }
 
-func (th *Collection[MODEL, FILTER]) checkModel(out any) error {
-	modelType := entity.GetModelType(out)
-
-	if !th.schema.ModelType.AssignableTo(modelType) {
-		return errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
-	}
-
-	return nil
-}
+//func (th *Collection[MODEL, FILTER]) checkModel(out any) error {
+//	modelType := entity.GetModelType(out)
+//
+//	if !th.schema.ModelType.AssignableTo(modelType) {
+//		return errors.WithStack(errortype.ErrModelTypeNotMatchInCollection)
+//	}
+//
+//	return nil
+//}
 
 // FindOneByFilter 封装了一下mongo的查询方法
 func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER, opts ...*FindOption) (MODEL, error) {
@@ -293,6 +296,10 @@ func (th *Collection[MODEL, FILTER]) InsertOne(ctx context.Context, model MODEL,
 
 	if d, ok := any(model).(BeforeSave); ok {
 		d.BeforeSave()
+		// 校验模型
+		if err := validate.Struct(model); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	result, err := th.collection.InsertOne(ctx, model, opts...)
@@ -310,14 +317,14 @@ func (th *Collection[MODEL, FILTER]) InsertOne(ctx context.Context, model MODEL,
 // InsertMany 创建一组内容
 func (th *Collection[MODEL, FILTER]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
 
-	if err := th.checkModel(models); err != nil {
-		return err
-	}
-
 	var ms []any
 	for _, model := range models {
 		if d, ok := any(model).(BeforeSave); ok {
 			d.BeforeSave()
+		}
+		// 校验模型
+		if err := validate.Struct(model); err != nil {
+			return errors.WithStack(err)
 		}
 		ms = append(ms, model)
 	}
