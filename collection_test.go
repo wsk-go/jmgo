@@ -34,7 +34,7 @@ type TestFilter struct {
 func Test_Raw_Insert(t *testing.T) {
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[Test, TestFilter](Test{}, db)
+	col := NewCollection[Test](Test{}, db)
 
 	err := col.InsertOne(context.Background(), Test{
 		Name:         "abc",
@@ -83,7 +83,7 @@ func Test_Raw_Read(t *testing.T) {
 
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[*Test, TestFilter](&Test{}, db)
+	col := NewCollection[*Test](&Test{}, db)
 	ctx := context.Background()
 
 	models, err := col.FindOneByFilter(ctx, TestFilter{})

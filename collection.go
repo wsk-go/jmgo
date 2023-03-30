@@ -18,32 +18,27 @@ import (
 
 var validate = validator.New()
 
-type Collection[MODEL any, FILTER any] struct {
+type Collection[MODEL any] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
 }
 
-func NewCollection[MODEL any, FILTER any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL, FILTER] {
+func NewCollection[MODEL any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL] {
 	schema, err := entity.GetOrParse(model)
 	if err != nil {
 		panic(err)
 	}
 	col := database.db.Collection(schema.Collection, opts...)
 
-	return &Collection[MODEL, FILTER]{
+	return &Collection[MODEL]{
 		collection: col,
 		schema:     schema,
 	}
 }
 
 // FindOneByFilter find one by filter
-func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOneOptions) (MODEL, error) {
-	return th.RawFindOneByFilter(ctx, filter, opts...)
-}
-
-// RawFindOneByFilter find one by filter
-func (th *Collection[MODEL, FILTER]) RawFindOneByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOneOptions) (MODEL, error) {
+func (th *Collection[MODEL]) FindOneByFilter(ctx context.Context, filter any, opts ...*options.FindOneOptions) (MODEL, error) {
 
 	var out MODEL
 
@@ -71,19 +66,8 @@ func (th *Collection[MODEL, FILTER]) RawFindOneByFilter(ctx context.Context, fil
 	return out, nil
 }
 
-// FindByFilter list with filter
-func (th *Collection[MODEL, FILTER]) FindByFilter(ctx context.Context, filter FILTER, opts ...*options.FindOptions) ([]MODEL, error) {
-	return th.RawFind(ctx, filter, opts...)
-}
-
-// FindByFilterWithTotal
-// Param total count total if total is not nil
-func (th *Collection[MODEL, FILTER]) FindByFilterWithTotal(ctx context.Context, filter FILTER, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
-	return th.RawFindByFilterWithTotal(ctx, filter, total, opts...)
-}
-
-// RawFindByFilterWithTotal get page
-func (th *Collection[MODEL, FILTER]) RawFindByFilterWithTotal(ctx context.Context, filter any, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
+// FindByFilterWithTotal get page
+func (th *Collection[MODEL]) FindByFilterWithTotal(ctx context.Context, filter any, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
@@ -117,8 +101,8 @@ func (th *Collection[MODEL, FILTER]) RawFindByFilterWithTotal(ctx context.Contex
 	return out, nil
 }
 
-// RawFind filter type is any,you can use bson.M,bson.D...
-func (th *Collection[MODEL, FILTER]) RawFind(ctx context.Context, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
+// Find filter type is any,you can use bson.M,bson.D...
+func (th *Collection[MODEL]) Find(ctx context.Context, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
@@ -144,7 +128,7 @@ func (th *Collection[MODEL, FILTER]) RawFind(ctx context.Context, filter any, op
 	return out, nil
 }
 
-func (th *Collection[MODEL, FILTER]) mustConvertFilter(filter any) (any, error) {
+func (th *Collection[MODEL]) mustConvertFilter(filter any) (any, error) {
 	query, count, err := th.convertFilter(filter)
 
 	if err != nil {
@@ -158,7 +142,7 @@ func (th *Collection[MODEL, FILTER]) mustConvertFilter(filter any) (any, error) 
 	return query, nil
 }
 
-func (th *Collection[MODEL, FILTER]) convertFilter(filter any) (any, int, error) {
+func (th *Collection[MODEL]) convertFilter(filter any) (any, int, error) {
 
 	switch v := filter.(type) {
 	// 原生M,直接返回
@@ -195,7 +179,7 @@ func (th *Collection[MODEL, FILTER]) convertFilter(filter any) (any, int, error)
 }
 
 // begin iter all fields in filter
-func (th *Collection[MODEL, FILTER]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
+func (th *Collection[MODEL]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
 	for _, filterField := range filterSchema.Fields {
 		fieldValue := filterField.ReflectValueOf(value)
 		// continue if field value is zero
@@ -227,7 +211,7 @@ func (th *Collection[MODEL, FILTER]) fillToQuery(value reflect.Value, filterSche
 
 	return nil
 }
-func (th *Collection[MODEL, FILTER]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
+func (th *Collection[MODEL]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
 	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 
 	if err != nil {
@@ -243,7 +227,7 @@ func (th *Collection[MODEL, FILTER]) Aggregate(ctx context.Context, pipeline any
 	return err
 }
 
-func (th *Collection[MODEL, FILTER]) Count(ctx context.Context, filter any) (int64, error) {
+func (th *Collection[MODEL]) Count(ctx context.Context, filter any) (int64, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return 0, err
@@ -251,7 +235,7 @@ func (th *Collection[MODEL, FILTER]) Count(ctx context.Context, filter any) (int
 	return th.count(ctx, query)
 }
 
-func (th *Collection[MODEL, FILTER]) Exists(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL]) Exists(ctx context.Context, filter any) (bool, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return false, err
@@ -260,7 +244,7 @@ func (th *Collection[MODEL, FILTER]) Exists(ctx context.Context, filter any) (bo
 	return count > 0, err
 }
 
-func (th *Collection[MODEL, FILTER]) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
+func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
 	type Count struct {
 		Count int64 `bson:"count"`
 	}
@@ -295,7 +279,7 @@ func (th *Collection[MODEL, FILTER]) count(ctx context.Context, filter any, opts
 }
 
 // 获取属性对应的schemaField
-func (th *Collection[MODEL, FILTER]) mustSchemaField(fieldName string) (*entity.EntityField, error) {
+func (th *Collection[MODEL]) mustSchemaField(fieldName string) (*entity.EntityField, error) {
 
 	schemaField := th.schema.LookUpField(fieldName)
 
@@ -307,7 +291,7 @@ func (th *Collection[MODEL, FILTER]) mustSchemaField(fieldName string) (*entity.
 }
 
 // InsertOne inert one
-func (th *Collection[MODEL, FILTER]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
+func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
 
 	if d, ok := any(model).(BeforeSave); ok {
 		d.BeforeSave()
@@ -330,7 +314,7 @@ func (th *Collection[MODEL, FILTER]) InsertOne(ctx context.Context, model MODEL,
 }
 
 // InsertMany 创建一组内容
-func (th *Collection[MODEL, FILTER]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
+func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
 
 	var ms []any
 	for _, model := range models {
@@ -362,7 +346,7 @@ func (th *Collection[MODEL, FILTER]) InsertMany(ctx context.Context, models []MO
 }
 
 // UpdateOneByFilter 返回参数: match 表示更新是否成功
-func (th *Collection[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filter FILTER, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
+func (th *Collection[MODEL]) UpdateOneByFilter(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, false, opts)
 	if err != nil {
@@ -372,7 +356,7 @@ func (th *Collection[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filt
 	return result.ModifiedCount > 0, err
 }
 
-func (th *Collection[MODEL, FILTER]) UpdateMany(ctx context.Context, filter FILTER, model MODEL, opts ...*options.UpdateOptions) (int64, error) {
+func (th *Collection[MODEL]) UpdateMany(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (int64, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, true, opts)
 	if err != nil {
@@ -382,7 +366,7 @@ func (th *Collection[MODEL, FILTER]) UpdateMany(ctx context.Context, filter FILT
 	return result.ModifiedCount, err
 }
 
-func (th *Collection[MODEL, FILTER]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (th *Collection[MODEL]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
 
 	if d, ok := model.(BeforeUpdate); ok {
 		d.BeforeUpdate()
@@ -423,7 +407,7 @@ func (th *Collection[MODEL, FILTER]) doUpdate(ctx context.Context, filter any, m
 	return result, nil
 }
 
-func (th *Collection[MODEL, FILTER]) mapToUpdate(model any) (bson.M, error) {
+func (th *Collection[MODEL]) mapToUpdate(model any) (bson.M, error) {
 	value := reflect.ValueOf(model)
 
 	update := bson.M{}
@@ -442,11 +426,11 @@ func (th *Collection[MODEL, FILTER]) mapToUpdate(model any) (bson.M, error) {
 	}, nil
 }
 
-func (th *Collection[MODEL, FILTER]) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+func (th *Collection[MODEL]) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
 	return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
-func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter FILTER) (bool, error) {
+func (th *Collection[MODEL]) DeleteOne(ctx context.Context, filter any) (bool, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -464,12 +448,12 @@ func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter FILTE
 	return result.DeletedCount > 0, nil
 }
 
-func (th *Collection[MODEL, FILTER]) Delete(ctx context.Context, filter FILTER) (bool, error) {
+func (th *Collection[MODEL]) Delete(ctx context.Context, filter any) (bool, error) {
 	count, err := th.doDelete(ctx, filter, true)
 	return count > 0, err
 }
 
-func (th *Collection[MODEL, FILTER]) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
+func (th *Collection[MODEL]) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -494,12 +478,12 @@ func (th *Collection[MODEL, FILTER]) doDelete(ctx context.Context, filter any, m
 	return result.DeletedCount, nil
 }
 
-func (th *Collection[MODEL, FILTER]) EnsureIndex(model *mongo.IndexModel) (string, error) {
+func (th *Collection[MODEL]) EnsureIndex(model *mongo.IndexModel) (string, error) {
 	return th.collection.Indexes().CreateOne(context.Background(), *model)
 }
 
 // listen: 出错直接使用panic
-func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
+func (th *Collection[MODEL]) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
 
 	for {
 		time.After(1 * time.Second)
