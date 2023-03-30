@@ -1,4 +1,4 @@
-module code.aliyun.com/jgo/jmongo
+module github.com/JackWSK/jmongo
 
 go 1.18
 
