@@ -55,7 +55,7 @@ func NewMustObjectIdString() ObjectIdString {
 // value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type ObjectIdString string
 
-func (th ObjectIdString) toString() string {
+func (th ObjectIdString) ToString() string {
 	return string(th)
 }
 
@@ -94,8 +94,4 @@ func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
 
 func NewObjectIdString() ObjectIdString {
 	return ObjectIdString(primitive.NewObjectID().Hex())
-}
-
-func NewObjectIdPtr() primitive.ObjectID {
-	return primitive.NewObjectID()
 }
