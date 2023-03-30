@@ -55,6 +55,10 @@ func NewMustObjectIdString() ObjectIdString {
 // value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
 type ObjectIdString string
 
+func (th ObjectIdString) toString() string {
+	return string(th)
+}
+
 func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
 	if data == nil {
 		return nil
