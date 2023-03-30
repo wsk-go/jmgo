@@ -424,7 +424,7 @@ func (th *Collection[MODEL, FILTER]) FindAndModify(ctx context.Context, filter a
 	return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
-func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter FILTER) (bool, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -442,7 +442,7 @@ func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter any) 
 	return result.DeletedCount > 0, nil
 }
 
-func (th *Collection[MODEL, FILTER]) Delete(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, FILTER]) Delete(ctx context.Context, filter FILTER) (bool, error) {
 	count, err := th.doDelete(ctx, filter, true)
 	return count > 0, err
 }
