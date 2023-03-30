@@ -14,6 +14,5 @@ var (
 	ErrIdFieldDoesNotExists = errors.New("id field does not exits, please add tag bson:\"_id\" on any field you want")
 
 	// ErrModelTypeNotMatch
-	ErrModelTypeNotMatchInCollection = errors.New("model type not match in collection")
+	ErrModelTypeNotMatchInCollection = errors.New("model type not match in operator")
 )
-

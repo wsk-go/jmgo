@@ -53,7 +53,7 @@ func newEntityByModelType(modelType reflect.Type, index []int) (*Entity, error) 
 		return s, nil
 	}
 
-	// get collection name for model
+	// get operator name for model
 	modelValue := reflect.New(modelType)
 	var collectionName string
 	if tabler, ok := modelValue.Interface().(CollectionNameSupplier); ok {

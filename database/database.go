@@ -22,9 +22,9 @@ package database
 //		return v.(*Collection)
 //	}
 //
-//	collection := NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
-//	th.cache.Store(schema.ModelType, collection)
-//	return collection
+//	operator := NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
+//	th.cache.Store(schema.ModelType, operator)
+//	return operator
 //}
 
 //// WithTransaction open transaction

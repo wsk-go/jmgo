@@ -32,9 +32,9 @@ func NewDatabase(db *mongo.Database, client *Client) *Database {
 //		return v.(*Collection)
 //	}
 //
-//	collection := NewCollection(th.db.Collection(schema.Collection, opts...), schema)
-//	th.cache.Store(schema.ModelType, collection)
-//	return collection
+//	operator := NewCollection(th.db.Collection(schema.Collection, opts...), schema)
+//	th.cache.Store(schema.ModelType, operator)
+//	return operator
 //}
 
 // WithTransaction open transaction

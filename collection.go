@@ -527,13 +527,13 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 
 //func (th *Collection[MODEL, FILTER]) Must(failFunc func() error) *MustExecutor[MODEL, FILTER] {
 //	return &MustExecutor[MODEL, FILTER]{
-//		collection:       th,
+//		operator:       th,
 //		notExistsHandler: failFunc,
 //	}
 //}
 
 //type MustExecutor[MODEL any, FILTER any] struct {
-//	collection *Collection[MODEL, FILTER]
+//	operator *Collection[MODEL, FILTER]
 //	// 不存在的时候的的自定义异常
 //	notExistsHandler func() error
 //}
@@ -541,7 +541,7 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 //// FindOne 当数据不存在，回调FailError方法
 //func (th *MustExecutor[MODEL, FILTER]) FindOne(ctx context.Context, filter any, out any, options ...*FindOption) error {
 //
-//	ok, err := th.collection.FindOneByFilter(ctx, filter, out, options...)
+//	ok, err := th.operator.FindOneByFilter(ctx, filter, out, options...)
 //
 //	if err != nil {
 //		return err
@@ -556,7 +556,7 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 //
 //// Exists 当数据不存在，回调FailError方法
 //func (th *MustExecutor[MODEL, FILTER]) Exists(ctx context.Context, filter any) error {
-//	ok, err := th.collection.Exists(ctx, filter)
+//	ok, err := th.operator.Exists(ctx, filter)
 //	if err != nil {
 //		return err
 //	}
@@ -569,7 +569,7 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 //}
 //
 //func (th *MustExecutor[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filter any, model any) error {
-//	ok, err := th.collection.UpdateOneByFilter(ctx, filter, model)
+//	ok, err := th.operator.UpdateOneByFilter(ctx, filter, model)
 //	if err != nil {
 //		return err
 //	}
@@ -583,7 +583,7 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 //
 //// DeleteOne 根据filter来更新一个
 //func (th *MustExecutor[MODEL, FILTER]) DeleteOne(ctx context.Context, filter any) error {
-//	ok, err := th.collection.DeleteOne(ctx, filter)
+//	ok, err := th.operator.DeleteOne(ctx, filter)
 //
 //	if err != nil {
 //		return err
@@ -599,7 +599,7 @@ func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, ma
 //// Delete 根据filter来更新一个
 //func (th *MustExecutor[MODEL, FILTER]) Delete(ctx context.Context, filter interface{}) error {
 //
-//	ok, err := th.collection.Delete(ctx, filter)
+//	ok, err := th.operator.Delete(ctx, filter)
 //
 //	if err != nil {
 //		return err

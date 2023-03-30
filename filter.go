@@ -93,15 +93,15 @@ func (th Range) handle(field *entity.EntityField, filterField *filter.FilterFiel
 	return nil
 }
 
-// operator sign
+// MatchType operator sign
 type MatchType uint8
 
 const (
-	// smaller than
+	// MatchTypePrefix smaller than
 	MatchTypePrefix MatchType = 1
-	// smaller than or equal
+	// MatchTypeSuffix smaller than or equal
 	MatchTypeSuffix MatchType = 2
-	// greater than
+	// MatchTypeContains greater than
 	MatchTypeContains MatchType = 3
 )
 
