@@ -66,6 +66,19 @@ func (th *Collection[MODEL]) FindOneByFilter(ctx context.Context, filter any, op
 	return out, nil
 }
 
+type Page interface {
+	GetOffset() int64
+
+	GetLength() int64
+
+	GetWithTotal() *int64
+}
+
+func (th *Collection[MODEL]) FindPageByFilter(ctx context.Context, page Page, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
+	opts = append(opts, options.Find().SetSkip(page.GetLength()).SetSkip(page.GetOffset()))
+	return th.FindByFilterWithTotal(ctx, filter, page.GetWithTotal(), opts...)
+}
+
 // FindByFilterWithTotal get page
 func (th *Collection[MODEL]) FindByFilterWithTotal(ctx context.Context, filter any, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
 
