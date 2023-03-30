@@ -15,17 +15,26 @@ import (
 	"time"
 )
 
-type Collection struct {
+type Collection[MODEL any, FILTER any] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
 }
 
-func NewMongoCollection(collection *mongo.Collection, schema *entity.Entity) *Collection {
-	return &Collection{collection: collection, schema: schema}
+func NewCollection[MODEL any, FILTER any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL, FILTER] {
+	schema, err := entity.GetOrParse(model)
+	if err != nil {
+		panic(err)
+	}
+	col := database.db.Collection(schema.Collection, opts...)
+
+	return &Collection[MODEL, FILTER]{
+		collection: col,
+		schema:     schema,
+	}
 }
 
-func (th *Collection) checkModel(out any) error {
+func (th *Collection[MODEL, FILTER]) checkModel(out any) error {
 	modelType := entity.GetModelType(out)
 
 	if !th.schema.ModelType.AssignableTo(modelType) {
@@ -35,19 +44,14 @@ func (th *Collection) checkModel(out any) error {
 	return nil
 }
 
-// FindOne 封装了一下mongo的查询方法
-func (th *Collection) FindOne(ctx context.Context, filter any, out any, opts ...*FindOption) (found bool, err error) {
-	if err := th.checkModel(out); err != nil {
-		return false, err
-	}
+// FindOneByFilter 封装了一下mongo的查询方法
+func (th *Collection[MODEL, FILTER]) FindOneByFilter(ctx context.Context, filter FILTER, opts ...*FindOption) (MODEL, error) {
 
-	if filter == nil {
-		filter = bson.M{}
-	}
+	var out MODEL
 
-	filter, _, err = th.convertFilter(filter)
+	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
-		return false, err
+		return out, err
 	}
 
 	// 转化成mongo的配置选项
@@ -55,43 +59,35 @@ func (th *Collection) FindOne(ctx context.Context, filter any, out any, opts ...
 	if len(opts) > 0 {
 		mongoOpts, err = Merge(opts).makeFindOneOptions(th.schema)
 		if err != nil {
-			return false, errors.WithStack(err)
+			return out, errors.WithStack(err)
 		}
 	}
 
 	// 查找
-	one := th.collection.FindOne(ctx, filter, mongoOpts...)
+	one := th.collection.FindOne(ctx, convertedFilter, mongoOpts...)
 	err = one.Err()
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return false, nil
+			return out, nil
 		}
-		return false, err
+		return out, err
 	}
 
 	// 解析
-	err = one.Decode(out)
+	err = one.Decode(&out)
 	if err != nil {
-		return false, err
+		return out, err
 	}
 
-	return true, nil
+	return out, nil
 }
 
-// cond: if value is not bson.M or bson.D or struct, is value will be used as id
-func (th *Collection) Find(ctx context.Context, filter any, out any, opts ...*FindOption) error {
+// FindListByFilter Find cond: if value is not bson.M or bson.D or struct, is value will be used as id
+func (th *Collection[MODEL, FILTER]) FindListByFilter(ctx context.Context, filter FILTER, opts ...*FindOption) ([]MODEL, error) {
 
-	if err := th.checkModel(out); err != nil {
-		return err
-	}
-
-	if filter == nil {
-		return errors.New("value of filter can not be nil")
-	}
-
-	filter, _, err := th.convertFilter(filter)
+	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var mongoOpts []*options.FindOptions
@@ -99,38 +95,38 @@ func (th *Collection) Find(ctx context.Context, filter any, out any, opts ...*Fi
 		opt := Merge(opts)
 		mongoOpts, err = opt.makeFindOption(th.schema)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if opt.total != nil {
 			count, err := th.count(ctx, filter)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			*opt.total = count
 		}
 	}
 
 	// 查询
-	cursor, err := th.collection.Find(ctx, filter, mongoOpts...)
+	cursor, err := th.collection.Find(ctx, convertedFilter, mongoOpts...)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer func() {
 		_ = cursor.Close(ctx)
 	}()
-
-	err = cursor.All(ctx, out)
+	var out []MODEL
+	err = cursor.All(ctx, &out)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return out, nil
 }
 
-func (th *Collection) mustConvertFilter(filter any) (any, error) {
+func (th *Collection[MODEL, FILTER]) mustConvertFilter(filter any) (any, error) {
 	query, count, err := th.convertFilter(filter)
 
 	if err != nil {
@@ -144,7 +140,7 @@ func (th *Collection) mustConvertFilter(filter any) (any, error) {
 	return query, nil
 }
 
-func (th *Collection) convertFilter(filter any) (any, int, error) {
+func (th *Collection[MODEL, FILTER]) convertFilter(filter any) (any, int, error) {
 
 	switch v := filter.(type) {
 	// 原生M,直接返回
@@ -181,7 +177,7 @@ func (th *Collection) convertFilter(filter any) (any, int, error) {
 }
 
 // begin iter all fields in filter
-func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
+func (th *Collection[MODEL, FILTER]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
 	for _, filterField := range filterSchema.Fields {
 		fieldValue := filterField.ReflectValueOf(value)
 		// continue if field value is zero
@@ -213,7 +209,7 @@ func (th *Collection) fillToQuery(value reflect.Value, filterSchema *filterPkg.F
 
 	return nil
 }
-func (th *Collection) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
+func (th *Collection[MODEL, FILTER]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
 	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 
 	if err != nil {
@@ -229,7 +225,7 @@ func (th *Collection) Aggregate(ctx context.Context, pipeline any, results any, 
 	return err
 }
 
-func (th *Collection) Count(ctx context.Context, filter any) (int64, error) {
+func (th *Collection[MODEL, FILTER]) Count(ctx context.Context, filter any) (int64, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return 0, err
@@ -237,7 +233,7 @@ func (th *Collection) Count(ctx context.Context, filter any) (int64, error) {
 	return th.count(ctx, query)
 }
 
-func (th *Collection) Exists(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, FILTER]) Exists(ctx context.Context, filter any) (bool, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return false, err
@@ -246,7 +242,7 @@ func (th *Collection) Exists(ctx context.Context, filter any) (bool, error) {
 	return count > 0, err
 }
 
-func (th *Collection) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
+func (th *Collection[MODEL, FILTER]) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
 	type Count struct {
 		Count int64 `bson:"count"`
 	}
@@ -281,7 +277,7 @@ func (th *Collection) count(ctx context.Context, filter any, opts ...*options.Ag
 }
 
 // 获取属性对应的schemaField
-func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, error) {
+func (th *Collection[MODEL, FILTER]) mustSchemaField(fieldName string) (*entity.EntityField, error) {
 
 	schemaField := th.schema.LookUpField(fieldName)
 
@@ -292,14 +288,10 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 	return schemaField, nil
 }
 
-// 创建单个元素
-func (th *Collection) InsertOne(ctx context.Context, model any, opts ...*options.InsertOneOptions) error {
+// InsertOne inert one
+func (th *Collection[MODEL, FILTER]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
 
-	if err := th.checkModel(model); err != nil {
-		return err
-	}
-
-	if d, ok := model.(BeforeSave); ok {
+	if d, ok := any(model).(BeforeSave); ok {
 		d.BeforeSave()
 	}
 
@@ -308,33 +300,35 @@ func (th *Collection) InsertOne(ctx context.Context, model any, opts ...*options
 		return err
 	}
 
-	if d, ok := model.(AfterSave); ok {
+	if d, ok := any(model).(AfterSave); ok {
 		d.AfterSave(result.InsertedID)
 	}
 
 	return nil
 }
 
-// 创建一组内容
-func (th *Collection) InsertMany(ctx context.Context, models []any, opts ...*options.InsertManyOptions) error {
+// InsertMany 创建一组内容
+func (th *Collection[MODEL, FILTER]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
 
 	if err := th.checkModel(models); err != nil {
 		return err
 	}
 
+	var ms []any
 	for _, model := range models {
-		if d, ok := model.(BeforeSave); ok {
+		if d, ok := any(model).(BeforeSave); ok {
 			d.BeforeSave()
 		}
+		ms = append(ms, model)
 	}
 
-	result, err := th.collection.InsertMany(ctx, models, opts...)
+	result, err := th.collection.InsertMany(ctx, ms, opts...)
 	if err != nil {
 		return err
 	}
 
 	for i, model := range models {
-		if d, ok := model.(AfterSave); ok {
+		if d, ok := any(model).(AfterSave); ok {
 			l := len(result.InsertedIDs)
 			if i < l {
 				d.AfterSave(result.InsertedIDs[i])
@@ -345,8 +339,8 @@ func (th *Collection) InsertMany(ctx context.Context, models []any, opts ...*opt
 	return nil
 }
 
-// 返回参数: match 表示更新是否成功
-func (th *Collection) UpdateOne(ctx context.Context, filter any, model any, opts ...*options.UpdateOptions) (bool, error) {
+// UpdateOneByFilter 返回参数: match 表示更新是否成功
+func (th *Collection[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filter FILTER, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, false, opts)
 	if err != nil {
@@ -356,7 +350,7 @@ func (th *Collection) UpdateOne(ctx context.Context, filter any, model any, opts
 	return result.ModifiedCount > 0, err
 }
 
-func (th *Collection) UpdateMany(ctx context.Context, filter any, model any, opts ...*options.UpdateOptions) (int64, error) {
+func (th *Collection[MODEL, FILTER]) UpdateMany(ctx context.Context, filter FILTER, model MODEL, opts ...*options.UpdateOptions) (int64, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, true, opts)
 	if err != nil {
@@ -366,11 +360,7 @@ func (th *Collection) UpdateMany(ctx context.Context, filter any, model any, opt
 	return result.ModifiedCount, err
 }
 
-func (th *Collection) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
-
-	if err := th.checkModel(model); err != nil {
-		return nil, err
-	}
+func (th *Collection[MODEL, FILTER]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
 
 	if d, ok := model.(BeforeUpdate); ok {
 		d.BeforeUpdate()
@@ -411,7 +401,7 @@ func (th *Collection) doUpdate(ctx context.Context, filter any, model any, multi
 	return result, nil
 }
 
-func (th *Collection) mapToUpdate(model any) (bson.M, error) {
+func (th *Collection[MODEL, FILTER]) mapToUpdate(model any) (bson.M, error) {
 	value := reflect.ValueOf(model)
 
 	update := bson.M{}
@@ -430,11 +420,11 @@ func (th *Collection) mapToUpdate(model any) (bson.M, error) {
 	}, nil
 }
 
-func (th *Collection) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+func (th *Collection[MODEL, FILTER]) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
 	return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
-func (th *Collection) DeleteOne(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, FILTER]) DeleteOne(ctx context.Context, filter any) (bool, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -452,12 +442,12 @@ func (th *Collection) DeleteOne(ctx context.Context, filter any) (bool, error) {
 	return result.DeletedCount > 0, nil
 }
 
-func (th *Collection) Delete(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, FILTER]) Delete(ctx context.Context, filter any) (bool, error) {
 	count, err := th.doDelete(ctx, filter, true)
 	return count > 0, err
 }
 
-func (th *Collection) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
+func (th *Collection[MODEL, FILTER]) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -482,12 +472,12 @@ func (th *Collection) doDelete(ctx context.Context, filter any, multi bool) (int
 	return result.DeletedCount, nil
 }
 
-func (th *Collection) EnsureIndex(model *mongo.IndexModel) (string, error) {
+func (th *Collection[MODEL, FILTER]) EnsureIndex(model *mongo.IndexModel) (string, error) {
 	return th.collection.Indexes().CreateOne(context.Background(), *model)
 }
 
 // listen: 出错直接使用panic
-func (th *Collection) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
+func (th *Collection[MODEL, FILTER]) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
 
 	for {
 		time.After(1 * time.Second)
@@ -535,89 +525,89 @@ func (th *Collection) Watch(opts *options.ChangeStreamOptions, matchStage bson.D
 	}
 }
 
-func (th *Collection) Must(failFunc func() error) *MustExecutor {
-	return &MustExecutor{
-		collection:       th,
-		notExistsHandler: failFunc,
-	}
-}
+//func (th *Collection[MODEL, FILTER]) Must(failFunc func() error) *MustExecutor[MODEL, FILTER] {
+//	return &MustExecutor[MODEL, FILTER]{
+//		collection:       th,
+//		notExistsHandler: failFunc,
+//	}
+//}
 
-type MustExecutor struct {
-	collection *Collection
-	// 不存在的时候的的自定义异常
-	notExistsHandler func() error
-}
-
-// 当数据不存在，回调FailError方法
-func (th *MustExecutor) FindOne(ctx context.Context, filter any, out any, options ...*FindOption) error {
-
-	ok, err := th.collection.FindOne(ctx, filter, out, options...)
-
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return th.notExistsHandler()
-	}
-
-	return nil
-}
-
-// 当数据不存在，回调FailError方法
-func (th *MustExecutor) Exists(ctx context.Context, filter any) error {
-	ok, err := th.collection.Exists(ctx, filter)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return th.notExistsHandler()
-	}
-
-	return nil
-}
-
-func (th *MustExecutor) UpdateOne(ctx context.Context, filter any, model any) error {
-	ok, err := th.collection.UpdateOne(ctx, filter, model)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return th.notExistsHandler()
-	}
-
-	return nil
-}
-
-// 根据filter来更新一个
-func (th *MustExecutor) DeleteOne(ctx context.Context, filter any) error {
-	ok, err := th.collection.DeleteOne(ctx, filter)
-
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return th.notExistsHandler()
-	}
-
-	return nil
-}
-
-// 根据filter来更新一个
-func (th *MustExecutor) Delete(ctx context.Context, filter interface{}) error {
-
-	ok, err := th.collection.Delete(ctx, filter)
-
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return th.notExistsHandler()
-	}
-
-	return nil
-}
+//type MustExecutor[MODEL any, FILTER any] struct {
+//	collection *Collection[MODEL, FILTER]
+//	// 不存在的时候的的自定义异常
+//	notExistsHandler func() error
+//}
+//
+//// FindOne 当数据不存在，回调FailError方法
+//func (th *MustExecutor[MODEL, FILTER]) FindOne(ctx context.Context, filter any, out any, options ...*FindOption) error {
+//
+//	ok, err := th.collection.FindOneByFilter(ctx, filter, out, options...)
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	if !ok {
+//		return th.notExistsHandler()
+//	}
+//
+//	return nil
+//}
+//
+//// Exists 当数据不存在，回调FailError方法
+//func (th *MustExecutor[MODEL, FILTER]) Exists(ctx context.Context, filter any) error {
+//	ok, err := th.collection.Exists(ctx, filter)
+//	if err != nil {
+//		return err
+//	}
+//
+//	if !ok {
+//		return th.notExistsHandler()
+//	}
+//
+//	return nil
+//}
+//
+//func (th *MustExecutor[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filter any, model any) error {
+//	ok, err := th.collection.UpdateOneByFilter(ctx, filter, model)
+//	if err != nil {
+//		return err
+//	}
+//
+//	if !ok {
+//		return th.notExistsHandler()
+//	}
+//
+//	return nil
+//}
+//
+//// DeleteOne 根据filter来更新一个
+//func (th *MustExecutor[MODEL, FILTER]) DeleteOne(ctx context.Context, filter any) error {
+//	ok, err := th.collection.DeleteOne(ctx, filter)
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	if !ok {
+//		return th.notExistsHandler()
+//	}
+//
+//	return nil
+//}
+//
+//// Delete 根据filter来更新一个
+//func (th *MustExecutor[MODEL, FILTER]) Delete(ctx context.Context, filter interface{}) error {
+//
+//	ok, err := th.collection.Delete(ctx, filter)
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	if !ok {
+//		return th.notExistsHandler()
+//	}
+//
+//	return nil
+//}

@@ -1,7 +1,6 @@
 package jmongo
 
 import (
-	"code.aliyun.com/jgo/jmongo/entity"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,21 +21,21 @@ func NewDatabase(db *mongo.Database, client *Client) *Database {
 	return &Database{db: db, client: client}
 }
 
-func (th *Database) Collection(model any, opts ...*options.CollectionOptions) *Collection {
-	schema, err := entity.GetOrParse(model)
-	if err != nil {
-		panic(err)
-	}
-
-	// try getting from cache
-	if v, ok := th.cache.Load(schema.ModelType); ok {
-		return v.(*Collection)
-	}
-
-	collection := NewMongoCollection(th.db.Collection(schema.Collection, opts...), schema)
-	th.cache.Store(schema.ModelType, collection)
-	return collection
-}
+//func (th *Database) Collection(model any, opts ...*options.CollectionOptions) *Collection {
+//	schema, err := entity.GetOrParse(model)
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	// try getting from cache
+//	if v, ok := th.cache.Load(schema.ModelType); ok {
+//		return v.(*Collection)
+//	}
+//
+//	collection := NewCollection(th.db.Collection(schema.Collection, opts...), schema)
+//	th.cache.Store(schema.ModelType, collection)
+//	return collection
+//}
 
 // WithTransaction open transaction
 func (th *Database) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {

@@ -211,72 +211,72 @@ func (th *Collection[MODEL, FILTER]) fillToQuery(value reflect.Value, filterSche
 	return nil
 }
 
-//func (th *Collection) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
-//	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
+//	func (th *Collection) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
+//		cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 //
-//	if err != nil {
+//		if err != nil {
+//			return err
+//		}
+//
+//		defer func() {
+//			_ = cursor.Close(ctx)
+//		}()
+//
+//		err = cursor.All(ctx, results)
+//
 //		return err
 //	}
 //
-//	defer func() {
-//		_ = cursor.Close(ctx)
-//	}()
-//
-//	err = cursor.All(ctx, results)
-//
-//	return err
-//}
-//
-//func (th *Collection) Count(ctx context.Context, filter any) (int64, error) {
-//	query, _, err := th.convertFilter(filter)
-//	if err != nil {
-//		return 0, err
-//	}
-//	return th.count(ctx, query)
-//}
-//
-//func (th *Collection) Exists(ctx context.Context, filter any) (bool, error) {
-//	query, _, err := th.convertFilter(filter)
-//	if err != nil {
-//		return false, err
-//	}
-//	count, err := th.count(ctx, query)
-//	return count > 0, err
-//}
-//
-//func (th *Collection) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
-//	type Count struct {
-//		Count int64 `bson:"count"`
+//	func (th *Collection) Count(ctx context.Context, filter any) (int64, error) {
+//		query, _, err := th.convertFilter(filter)
+//		if err != nil {
+//			return 0, err
+//		}
+//		return th.count(ctx, query)
 //	}
 //
-//	filter = bson.A{
-//		bson.M{
-//			"$match": filter,
-//		},
-//		bson.M{
-//			"$count": "count",
-//		},
-//	}
-//	cursor, err := th.collection.Aggregate(ctx, filter, opts...)
-//	if err != nil {
-//		return 0, err
+//	func (th *Collection) Exists(ctx context.Context, filter any) (bool, error) {
+//		query, _, err := th.convertFilter(filter)
+//		if err != nil {
+//			return false, err
+//		}
+//		count, err := th.count(ctx, query)
+//		return count > 0, err
 //	}
 //
-//	defer func() {
-//		_ = cursor.Close(ctx)
-//	}()
+//	func (th *Collection) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
+//		type Count struct {
+//			Count int64 `bson:"count"`
+//		}
 //
-//	var results []*Count
-//	err = cursor.All(ctx, &results)
-//	if err != nil {
-//		return 0, err
-//	}
+//		filter = bson.A{
+//			bson.M{
+//				"$match": filter,
+//			},
+//			bson.M{
+//				"$count": "count",
+//			},
+//		}
+//		cursor, err := th.collection.Aggregate(ctx, filter, opts...)
+//		if err != nil {
+//			return 0, err
+//		}
 //
-//	if len(results) != 0 {
-//		return results[0].Count, err
+//		defer func() {
+//			_ = cursor.Close(ctx)
+//		}()
+//
+//		var results []*Count
+//		err = cursor.All(ctx, &results)
+//		if err != nil {
+//			return 0, err
+//		}
+//
+//		if len(results) != 0 {
+//			return results[0].Count, err
+//		}
+//		return 0, nil
 //	}
-//	return 0, nil
-//}
 //
 // 获取属性对应的schemaField
 func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, error) {
@@ -345,7 +345,7 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 //}
 //
 //// 返回参数: match 表示更新是否成功
-//func (th *Collection) UpdateOne(ctx context.Context, filter any, model any, opts ...*options.UpdateOptions) (bool, error) {
+//func (th *Collection) UpdateOneByFilter(ctx context.Context, filter any, model any, opts ...*options.UpdateOptions) (bool, error) {
 //
 //	result, err := th.doUpdate(ctx, filter, model, false, opts)
 //	if err != nil {
@@ -397,7 +397,7 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 //			return nil, err
 //		}
 //	} else {
-//		result, err = th.collection.UpdateOne(ctx, query, update, opts...)
+//		result, err = th.collection.UpdateOneByFilter(ctx, query, update, opts...)
 //		if err != nil {
 //			return nil, err
 //		}
@@ -577,8 +577,8 @@ func (th *Collection) mustSchemaField(fieldName string) (*entity.EntityField, er
 //	return nil
 //}
 //
-//func (th *MustExecutor) UpdateOne(ctx context.Context, filter any, model any) error {
-//	ok, err := th.collection.UpdateOne(ctx, filter, model)
+//func (th *MustExecutor) UpdateOneByFilter(ctx context.Context, filter any, model any) error {
+//	ok, err := th.collection.UpdateOneByFilter(ctx, filter, model)
 //	if err != nil {
 //		return err
 //	}
