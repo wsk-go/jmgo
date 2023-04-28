@@ -2,7 +2,6 @@ module github.com/JackWSK/jmongo
 
 go 1.18
 
-
 require (
 	github.com/go-playground/validator/v10 v10.12.0
 	github.com/pkg/errors v0.9.1
