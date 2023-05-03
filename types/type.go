@@ -11,7 +11,7 @@ import (
 // MustObjectIdString use this type to indicate objectId string,
 // it throw errortype if value is not valid objectId string in marshaling
 // value with the type will be marshaled into ObjectId and save into mongodb
-// value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
+// value fetched from mongodb which is objectId will be unmarshaled into SObjectId
 type MustObjectIdString string
 
 // UnmarshalBSONValue bson转go对象
@@ -46,20 +46,20 @@ func (th MustObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	return bson.MarshalValue(id)
 }
 
-func NewMustObjectIdString() ObjectIdString {
-	return ObjectIdString(primitive.NewObjectID().Hex())
+func NewMustObjectIdString() SObjectId {
+	return SObjectId(primitive.NewObjectID().Hex())
 }
 
-// ObjectIdString use this type to indicate objectId string
+// SObjectId use this type to indicate objectId string
 // value with the type will be marshaled into ObjectId and save into mongodb
-// value fetched from mongodb which is objectId will be unmarshaled into ObjectIdString
-type ObjectIdString string
+// value fetched from mongodb which is objectId will be unmarshaled into SObjectId
+type SObjectId string
 
-func (th ObjectIdString) ToString() string {
+func (th SObjectId) ToString() string {
 	return string(th)
 }
 
-func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+func (th *SObjectId) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
 	if data == nil {
 		return nil
 	}
@@ -68,19 +68,19 @@ func (th *ObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error
 	case bsontype.ObjectID:
 		objectId, _, ok := bsoncore.ReadObjectID(data)
 		if ok {
-			*th = ObjectIdString(objectId.Hex())
+			*th = SObjectId(objectId.Hex())
 		}
 	case bsontype.String:
 		s, _, ok := bsoncore.ReadString(data)
 		if ok {
-			*th = ObjectIdString(s)
+			*th = SObjectId(s)
 		}
 	}
 
 	return nil
 }
 
-func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (th SObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	s := string(th)
 	id, err := primitive.ObjectIDFromHex(s)
 	if err != nil {
@@ -92,6 +92,6 @@ func (th ObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	return t, v, err
 }
 
-func NewObjectIdString() ObjectIdString {
-	return ObjectIdString(primitive.NewObjectID().Hex())
+func NewObjectIdString() SObjectId {
+	return SObjectId(primitive.NewObjectID().Hex())
 }

@@ -19,16 +19,16 @@ type Base struct {
 
 type Test struct {
 	Base         `bson:",inline"`
-	Id           types.ObjectIdString `bson:"_id,omitempty"`
-	Name         string               `bson:"name"`
-	Age          int                  `bson:"happy"`
-	HelloWorld   int                  `bson:"helloWorld"`
+	Id           types.SObjectId `bson:"_id,omitempty"`
+	Name         string          `bson:"name"`
+	Age          int             `bson:"happy"`
+	HelloWorld   int             `bson:"helloWorld"`
 	UserPassword int
-	OrderId      types.ObjectIdString `bson:"orderId,omitempty"`
+	OrderId      types.SObjectId `bson:"orderId,omitempty"`
 }
 
 type TestFilter struct {
-	Id types.ObjectIdString
+	Id types.SObjectId
 }
 
 func Test_Raw_Insert(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var validate = validator.New()
+var Validate = validator.New()
 
 type Collection[MODEL any] struct {
 	schema          *entity.Entity
@@ -309,7 +309,7 @@ func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ..
 	if d, ok := any(model).(BeforeSave); ok {
 		d.BeforeSave()
 		// 校验模型
-		if err := validate.Struct(model); err != nil {
+		if err := Validate.Struct(model); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -335,7 +335,7 @@ func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opt
 			d.BeforeSave()
 		}
 		// 校验模型
-		if err := validate.Struct(model); err != nil {
+		if err := Validate.Struct(model); err != nil {
 			return errors.WithStack(err)
 		}
 		ms = append(ms, model)
