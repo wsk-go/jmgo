@@ -8,14 +8,10 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
-// MustObjectIdString use this type to indicate objectId string,
-// it throw errortype if value is not valid objectId string in marshaling
-// value with the type will be marshaled into ObjectId and save into mongodb
-// value fetched from mongodb which is objectId will be unmarshaled into SObjectId
-type MustObjectIdString string
+type MustSObjectId string
 
 // UnmarshalBSONValue bson转go对象
-func (th *MustObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+func (th *MustSObjectId) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
 	if data == nil {
 		return nil
 	}
@@ -24,19 +20,19 @@ func (th *MustObjectIdString) UnmarshalBSONValue(t bsontype.Type, data []byte) e
 	case bsontype.ObjectID:
 		objectId, _, ok := bsoncore.ReadObjectID(data)
 		if ok {
-			*th = MustObjectIdString(objectId.Hex())
+			*th = MustSObjectId(objectId.Hex())
 		}
 	case bsontype.String:
 		s, _, ok := bsoncore.ReadString(data)
 		if ok {
-			*th = MustObjectIdString(s)
+			*th = MustSObjectId(s)
 		}
 	}
 
 	return nil
 }
 
-func (th MustObjectIdString) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (th MustSObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	s := string(th)
 	id, err := primitive.ObjectIDFromHex(s)
 	if err != nil {

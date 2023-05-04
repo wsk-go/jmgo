@@ -7,7 +7,6 @@ import (
 	"github.com/JackWSK/jmongo/errortype"
 	filterPkg "github.com/JackWSK/jmongo/filter"
 	"github.com/JackWSK/jmongo/utils"
-	"github.com/go-playground/validator/v10"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,8 +14,6 @@ import (
 	"reflect"
 	"time"
 )
-
-var Validate = validator.New()
 
 type Collection[MODEL any] struct {
 	schema          *entity.Entity
