@@ -19,6 +19,7 @@ type Collection[MODEL any] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
+	client          *Client
 }
 
 func NewCollection[MODEL any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL] {
@@ -31,7 +32,12 @@ func NewCollection[MODEL any](model MODEL, database *Database, opts ...*options.
 	return &Collection[MODEL]{
 		collection: col,
 		schema:     schema,
+		client:     database.client,
 	}
+}
+
+func (th *Collection[MODEL]) Client() *Client {
+	return th.client
 }
 
 // FindOneByFilter find one by filter
