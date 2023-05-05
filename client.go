@@ -4,14 +4,31 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type Client struct {
 	client *mongo.Client
 }
 
-func NewClient(client *mongo.Client) *Client {
-	return &Client{client: client}
+func NewClient(opts ...*options.ClientOptions) (*Client, error) {
+	c, err := mongo.NewClient(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{client: c}, nil
+}
+
+func (c *Client) Client() *mongo.Client {
+	return c.client
+}
+
+func (c *Client) Connect(ctx context.Context) error {
+	return c.client.Connect(ctx)
+}
+
+func (c *Client) Ping(ctx context.Context, rp *readpref.ReadPref) error {
+	return c.client.Ping(ctx, rp)
 }
 
 // Database returns a handle for a database with the given name configured with the given DatabaseOptions.

@@ -21,25 +21,8 @@ func NewDatabase(db *mongo.Database, client *Client) *Database {
 	return &Database{db: db, client: client}
 }
 
-//func (th *Database) Collection(model any, opts ...*options.CollectionOptions) *Collection {
-//	schema, err := entity.GetOrParse(model)
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	// try getting from cache
-//	if v, ok := th.cache.Load(schema.ModelType); ok {
-//		return v.(*Collection)
-//	}
-//
-//	operator := NewCollection(th.db.Collection(schema.Collection, opts...), schema)
-//	th.cache.Store(schema.ModelType, operator)
-//	return operator
-//}
-
-// WithTransaction open transaction
-func (th *Database) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
-	return th.client.WithTransaction(ctx, fn)
+func (th *Database) Database() *mongo.Database {
+	return th.db
 }
 
 // Watch listen: 出错直接使用panic

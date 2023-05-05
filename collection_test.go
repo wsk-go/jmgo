@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/JackWSK/jmongo/types"
 	"go.mongodb.org/mongo-driver/event"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
 	"time"
@@ -231,22 +230,7 @@ func setupMongoClient(mongoUrl string) *Client {
 		},
 	})
 
-	//if conf.Profile != "dev" {
-	//	monitorOptions.SetAuth(options.Credential{
-	//		AuthSource: conf.MongoAuthSource,
-	//		Username:   conf.MongoUserName,
-	//		Password:   conf.MongoPassword,
-	//	})
-	//}
-
-	//credentials := options.Client().SetAuth(options.Credential{
-	//	AuthSource: "admin",
-	//	Username:   "jcloudapp",
-	//	Password:   "jcloudapp1231!",
-	//})
-
-	//client, err := mongo.NewClient(options.Client().ApplyURI(mongoUrl), monitorOptions, credentials)
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoUrl), monitorOptions)
+	client, err := NewClient(options.Client().ApplyURI(mongoUrl), monitorOptions)
 	if err != nil {
 		panic(err)
 	}
@@ -264,7 +248,7 @@ func setupMongoClient(mongoUrl string) *Client {
 		panic(err)
 	}
 
-	return NewClient(client)
+	return client
 }
 
 //
