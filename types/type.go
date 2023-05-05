@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -83,8 +82,6 @@ func (th SObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
 		return bson.MarshalValue(s)
 	}
 	t, v, err := bson.MarshalValue(id)
-	fmt.Println(t)
-	fmt.Printf("\n%+v\n", err)
 	return t, v, err
 }
 
