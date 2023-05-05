@@ -29,3 +29,15 @@ func (c *Client) WithTransaction(ctx context.Context, fn func(ctx context.Contex
 		return err
 	})
 }
+
+func WithTransaction[T any](ctx context.Context, c *Client, fn func(ctx context.Context) (T, error)) (T, error) {
+	var res T
+	var err error
+	err = c.client.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
+		res, err = sessionContext.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (any, error) {
+			return fn(sessCtx)
+		})
+		return err
+	})
+	return res, err
+}
