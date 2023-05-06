@@ -40,6 +40,10 @@ func (th *Collection[MODEL]) Client() *Client {
 	return th.client
 }
 
+func (th *Collection[MODEL]) FindOneById(ctx context.Context, id any, opts ...*options.FindOneOptions) (MODEL, error) {
+	return th.FindOneByFilter(ctx, bson.M{"_id": id}, opts...)
+}
+
 // FindOneByFilter find one by filter
 func (th *Collection[MODEL]) FindOneByFilter(ctx context.Context, filter any, opts ...*options.FindOneOptions) (MODEL, error) {
 
