@@ -6,7 +6,7 @@ import (
 	"github.com/JackWSK/jmongo/entity"
 	"github.com/JackWSK/jmongo/errortype"
 	filterPkg "github.com/JackWSK/jmongo/filter"
-	"github.com/JackWSK/jmongo/utils"
+	"github.com/JackWSK/jmongo/internal/utils"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

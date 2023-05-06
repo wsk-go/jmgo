@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/JackWSK/jmongo/entity"
 	"github.com/JackWSK/jmongo/filter"
-	"github.com/JackWSK/jmongo/utils"
+	"github.com/JackWSK/jmongo/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
