@@ -74,35 +74,36 @@ type Page interface {
 
 	GetLength() int64
 
-	GetWithTotal() *int64
+	GetCountTotal() bool
 }
 
-func (th *Collection[MODEL]) FindPageByFilter(ctx context.Context, page Page, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
+func (th *Collection[MODEL]) FindPage(ctx context.Context, page Page, filter any, opts ...*options.FindOptions) ([]MODEL, int64, error) {
 	opts = append(opts, options.Find().SetSkip(page.GetLength()).SetSkip(page.GetOffset()))
-	return th.FindByFilterWithTotal(ctx, filter, page.GetWithTotal(), opts...)
+	return th.FindWithTotal(ctx, filter, page.GetCountTotal(), opts...)
 }
 
-// FindByFilterWithTotal get page
-func (th *Collection[MODEL]) FindByFilterWithTotal(ctx context.Context, filter any, total *int64, opts ...*options.FindOptions) ([]MODEL, error) {
+// FindWithTotal get page
+func (th *Collection[MODEL]) FindWithTotal(ctx context.Context, filter any, countTotal bool, opts ...*options.FindOptions) ([]MODEL, int64, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	if total != nil {
+	var total int64
+	if countTotal {
 		count, err := th.count(ctx, convertedFilter)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		*total = count
+		total = count
 	}
 
 	// 查询
 	cursor, err := th.collection.Find(ctx, convertedFilter, opts...)
 
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	defer func() {
@@ -111,10 +112,10 @@ func (th *Collection[MODEL]) FindByFilterWithTotal(ctx context.Context, filter a
 	var out []MODEL
 	err = cursor.All(ctx, &out)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return out, nil
+	return out, total, nil
 }
 
 // Find filter type is any,you can use bson.M,bson.D...
