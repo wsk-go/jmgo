@@ -3,7 +3,6 @@ package jmongo
 import (
 	"context"
 	"fmt"
-	"github.com/JackWSK/jmongo/types"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
@@ -18,16 +17,16 @@ type Base struct {
 
 type Test struct {
 	Base         `bson:",inline"`
-	Id           types.SObjectId `bson:"_id,omitempty"`
-	Name         string          `bson:"name"`
-	Age          int             `bson:"happy"`
-	HelloWorld   int             `bson:"helloWorld"`
+	Id           SObjectId `bson:"_id,omitempty"`
+	Name         string    `bson:"name"`
+	Age          int       `bson:"happy"`
+	HelloWorld   int       `bson:"helloWorld"`
 	UserPassword int
-	OrderId      types.SObjectId `bson:"orderId,omitempty"`
+	OrderId      SObjectId `bson:"orderId,omitempty"`
 }
 
 type TestFilter struct {
-	Id types.SObjectId
+	Id SObjectId
 }
 
 func Test_Raw_Insert(t *testing.T) {
@@ -40,7 +39,7 @@ func Test_Raw_Insert(t *testing.T) {
 		Age:          8,
 		HelloWorld:   123,
 		UserPassword: 2,
-		OrderId:      types.NewObjectIdString(),
+		OrderId:      NewObjectIdString(),
 	})
 
 	if err != nil {

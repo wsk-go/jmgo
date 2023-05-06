@@ -1,4 +1,4 @@
-package types
+package jmongo
 
 import (
 	"go.mongodb.org/mongo-driver/bson"
