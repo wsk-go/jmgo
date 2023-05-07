@@ -372,7 +372,10 @@ func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opt
 	return nil
 }
 
-// UpdateOne 返回参数: match 表示更新是否成功
+func (th *Collection[MODEL]) UpdateOneById(ctx context.Context, id any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
+	return th.UpdateOne(ctx, bson.M{th.schema.IdDBName(): id}, model, opts...)
+}
+
 func (th *Collection[MODEL]) UpdateOne(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, false, opts)
