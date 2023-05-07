@@ -41,7 +41,12 @@ func (th *Collection[MODEL]) Client() *Client {
 }
 
 func (th *Collection[MODEL]) FindOneById(ctx context.Context, id any, opts ...*options.FindOneOptions) (MODEL, error) {
-	return th.FindOneByFilter(ctx, bson.M{"_id": id}, opts...)
+	return th.FindOneByFilter(ctx, bson.M{th.schema.IdField.DBName: id}, opts...)
+}
+
+func (th *Collection[MODEL]) ExistsById(ctx context.Context, id any) (bool, error) {
+	c, err := th.Count(ctx, bson.M{th.schema.IdField.DBName: id})
+	return c > 0, err
 }
 
 // FindOneByFilter find one by filter
