@@ -180,6 +180,7 @@ func (th *Collection[MODEL]) convertFilter(filter any) (any, int, error) {
 	}
 
 	kind := reflect.Indirect(reflect.ValueOf(filter)).Kind()
+
 	// regard as id if kind is not struct
 	if kind != reflect.Struct {
 		if kind == reflect.Slice || kind == reflect.Array {
@@ -371,8 +372,8 @@ func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opt
 	return nil
 }
 
-// UpdateOneByFilter 返回参数: match 表示更新是否成功
-func (th *Collection[MODEL]) UpdateOneByFilter(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
+// UpdateOne 返回参数: match 表示更新是否成功
+func (th *Collection[MODEL]) UpdateOne(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, false, opts)
 	if err != nil {
@@ -456,6 +457,9 @@ func (th *Collection[MODEL]) FindAndModify(ctx context.Context, filter any, docu
 	return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
+func (th *Collection[MODEL]) DeleteOneById(ctx context.Context, id any) (bool, error) {
+	return th.DeleteOne(ctx, bson.M{th.schema.IdDBName(): id})
+}
 func (th *Collection[MODEL]) DeleteOne(ctx context.Context, filter any) (bool, error) {
 
 	query, count, err := th.convertFilter(filter)
@@ -600,8 +604,8 @@ func (th *Collection[MODEL]) Watch(opts *options.ChangeStreamOptions, matchStage
 //	return nil
 //}
 //
-//func (th *MustExecutor[MODEL, FILTER]) UpdateOneByFilter(ctx context.Context, filter any, model any) error {
-//	ok, err := th.operator.UpdateOneByFilter(ctx, filter, model)
+//func (th *MustExecutor[MODEL, FILTER]) UpdateOne(ctx context.Context, filter any, model any) error {
+//	ok, err := th.operator.UpdateOne(ctx, filter, model)
 //	if err != nil {
 //		return err
 //	}
