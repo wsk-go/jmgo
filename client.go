@@ -54,7 +54,11 @@ func WithTransaction[T any](ctx context.Context, c *Client, fn func(ctx context.
 		a, err := sessionContext.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (any, error) {
 			return fn(sessCtx)
 		})
-		res = a.(T)
+
+		if a != nil {
+			res = a.(T)
+		}
+
 		return err
 	})
 	return res, err
