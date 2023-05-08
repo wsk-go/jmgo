@@ -254,55 +254,41 @@ func (th *Collection[MODEL]) Aggregate(ctx context.Context, pipeline any, result
 	return err
 }
 
-func (th *Collection[MODEL]) Count(ctx context.Context, filter any) (int64, error) {
+func (th *Collection[MODEL]) Count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return 0, err
 	}
-	return th.count(ctx, query)
+	return th.count(ctx, query, opts...)
 }
 
-func (th *Collection[MODEL]) Exists(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL]) Exists(ctx context.Context, filter any, opts ...*options.CountOptions) (bool, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return false, err
 	}
-	count, err := th.count(ctx, query)
+	count, err := th.count(ctx, query, opts...)
 	return count > 0, err
 }
 
-func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*options.AggregateOptions) (int64, error) {
+func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
 	type Count struct {
 		Count int64 `bson:"count"`
 	}
 
-	filter = bson.A{
-		bson.M{
-			"$match": filter,
-		},
-		bson.M{
-			"$count": "count",
-		},
-	}
-	cursor, err := th.collection.Aggregate(ctx, filter, opts...)
+	//filter = bson.A{
+	//	bson.M{
+	//		"$match": filter,
+	//	},
+	//	bson.M{
+	//		"$count": "count",
+	//	},
+	//}
+	count, err := th.collection.CountDocuments(ctx, filter, opts...)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
-
-	defer func() {
-		_ = cursor.Close(ctx)
-	}()
-
-	var results []*Count
-	err = cursor.All(ctx, &results)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(results) != 0 {
-		return results[0].Count, err
-	}
-	return 0, nil
+	return count, nil
 }
 
 // 获取属性对应的schemaField
