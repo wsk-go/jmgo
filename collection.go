@@ -272,9 +272,9 @@ func (th *Collection[MODEL]) Exists(ctx context.Context, filter any, opts ...*op
 }
 
 func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
-	type Count struct {
-		Count int64 `bson:"count"`
-	}
+	//type Count struct {
+	//	Count int64 `bson:"count"`
+	//}
 
 	//filter = bson.A{
 	//	bson.M{
