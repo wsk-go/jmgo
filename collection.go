@@ -238,6 +238,99 @@ func (th *Collection[MODEL]) fillToQuery(value reflect.Value, filterSchema *filt
 
 	return nil
 }
+
+func (th *Collection[MODEL]) Bulk(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+
+	for _, model := range models {
+		switch v := model.(type) {
+		case *mongo.UpdateOneModel:
+			filter, err := th.mustConvertFilter(v.Filter)
+			if err != nil {
+				return nil, err
+			}
+			v.SetFilter(filter)
+
+			err = th.tryCallBeforeUpdateHook(v.Update)
+			if err != nil {
+				return nil, err
+			}
+
+			doc, err := th.mapToUpdate(v.Update)
+			if err != nil {
+				return nil, err
+			}
+			v.SetUpdate(doc)
+		case *mongo.UpdateManyModel:
+
+			filter, err := th.mustConvertFilter(v.Filter)
+			if err != nil {
+				return nil, err
+			}
+			v.SetFilter(filter)
+
+			err = th.tryCallBeforeUpdateHook(v.Update)
+			if err != nil {
+				return nil, err
+			}
+
+			doc, err := th.mapToUpdate(v.Update)
+			if err != nil {
+				return nil, err
+			}
+			v.SetUpdate(doc)
+		case *mongo.DeleteOneModel:
+
+			filter, err := th.mustConvertFilter(v.Filter)
+			if err != nil {
+				return nil, err
+			}
+			v.SetFilter(filter)
+		case *mongo.DeleteManyModel:
+			filter, err := th.mustConvertFilter(v.Filter)
+			if err != nil {
+				return nil, err
+			}
+			v.SetFilter(filter)
+		case *mongo.InsertOneModel:
+			err := th.tryCallBeforeSaveHook(v.Document)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	result, err := th.collection.BulkWrite(ctx, models, opts...)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	for i, model := range models {
+		if insertion, ok := model.(*mongo.InsertOneModel); ok {
+			th.tryCallAfterSaveHook(insertion.Document, result.UpsertedIDs[int64(i)])
+		}
+	}
+	return result, nil
+}
+
+func (th *Collection[MODEL]) UpdateOneModel(filter any, model MODEL) *mongo.UpdateOneModel {
+	return mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(model)
+}
+
+func (th *Collection[MODEL]) UpdateManyModel(filter any, model MODEL) *mongo.UpdateManyModel {
+	return mongo.NewUpdateManyModel().SetFilter(filter).SetUpdate(model)
+}
+
+func (th *Collection[MODEL]) InsertOneModel(model MODEL) *mongo.InsertOneModel {
+	return mongo.NewInsertOneModel().SetDocument(model)
+}
+
+func (th *Collection[MODEL]) DeleteOneModel(filter any) *mongo.DeleteOneModel {
+	return mongo.NewDeleteOneModel().SetFilter(filter)
+}
+
+func (th *Collection[MODEL]) DeleteManyModel(filter any) *mongo.DeleteManyModel {
+	return mongo.NewDeleteManyModel().SetFilter(filter)
+}
+
 func (th *Collection[MODEL]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
 	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 
@@ -306,12 +399,8 @@ func (th *Collection[MODEL]) mustSchemaField(fieldName string) (*entity.EntityFi
 // InsertOne inert one
 func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
 
-	if d, ok := any(model).(BeforeSave); ok {
-		d.BeforeSave()
-		// 校验模型
-		if err := Validate.Struct(model); err != nil {
-			return errors.WithStack(err)
-		}
+	if err := th.tryCallBeforeSaveHook(model); err != nil {
+		return err
 	}
 
 	result, err := th.collection.InsertOne(ctx, model, opts...)
@@ -319,9 +408,7 @@ func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ..
 		return err
 	}
 
-	if d, ok := any(model).(AfterSave); ok {
-		d.AfterSave(result.InsertedID)
-	}
+	th.tryCallAfterSaveHook(model, result.InsertedID)
 
 	return nil
 }
@@ -329,14 +416,11 @@ func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ..
 // InsertMany 创建一组内容
 func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
 
-	var ms []any
+	var ms = make([]any, 0, len(models))
 	for _, model := range models {
-		if d, ok := any(model).(BeforeSave); ok {
-			d.BeforeSave()
-		}
-		// 校验模型
-		if err := Validate.Struct(model); err != nil {
-			return errors.WithStack(err)
+		err := th.tryCallBeforeSaveHook(model)
+		if err != nil {
+			return err
 		}
 		ms = append(ms, model)
 	}
@@ -347,12 +431,7 @@ func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opt
 	}
 
 	for i, model := range models {
-		if d, ok := any(model).(AfterSave); ok {
-			l := len(result.InsertedIDs)
-			if i < l {
-				d.AfterSave(result.InsertedIDs[i])
-			}
-		}
+		th.tryCallAfterSaveHook(model, result.InsertedIDs[i])
 	}
 
 	return nil
@@ -384,8 +463,9 @@ func (th *Collection[MODEL]) UpdateMany(ctx context.Context, filter any, model M
 
 func (th *Collection[MODEL]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
 
-	if d, ok := model.(BeforeUpdate); ok {
-		d.BeforeUpdate()
+	err := th.tryCallBeforeUpdateHook(model)
+	if err != nil {
+		return nil, err
 	}
 
 	query, count, err := th.convertFilter(filter)
@@ -416,9 +496,7 @@ func (th *Collection[MODEL]) doUpdate(ctx context.Context, filter any, model any
 		}
 	}
 
-	if d, ok := model.(AfterUpdate); ok {
-		d.AfterUpdate()
-	}
+	th.tryCallAfterUpdateHook(model)
 
 	return result, nil
 }
@@ -547,6 +625,42 @@ func (th *Collection[MODEL]) Watch(opts *options.ChangeStreamOptions, matchStage
 				}
 			}
 		}()
+	}
+}
+
+func (th *Collection[MODEL]) tryCallBeforeSaveHook(model any) error {
+	if d, ok := model.(BeforeSave); ok {
+		err := d.BeforeSave()
+		if err != nil {
+			return err
+		}
+		// 校验模型
+		if err := Validate.Struct(model); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
+}
+
+func (th *Collection[MODEL]) tryCallAfterSaveHook(model any, id any) {
+	if d, ok := model.(AfterSave); ok {
+		d.AfterSave(id)
+	}
+}
+
+func (th *Collection[MODEL]) tryCallBeforeUpdateHook(model any) error {
+	if d, ok := model.(BeforeUpdate); ok {
+		err := d.BeforeUpdate()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (th *Collection[MODEL]) tryCallAfterUpdateHook(model any) {
+	if d, ok := model.(AfterUpdate); ok {
+		d.AfterUpdate()
 	}
 }
 

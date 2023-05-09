@@ -1,7 +1,7 @@
 package jmongo
 
 type BeforeSave interface {
-	BeforeSave()
+	BeforeSave() error
 }
 
 type AfterSave interface {
@@ -9,7 +9,7 @@ type AfterSave interface {
 }
 
 type BeforeUpdate interface {
-	BeforeUpdate()
+	BeforeUpdate() error
 }
 
 type AfterUpdate interface {
