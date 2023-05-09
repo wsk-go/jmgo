@@ -292,6 +292,12 @@ func (th *Collection[MODEL]) BulkWrite(ctx context.Context, models []mongo.Write
 				return nil, err
 			}
 			v.SetFilter(filter)
+		case *mongo.ReplaceOneModel:
+			filter, err := th.mustConvertFilter(v.Filter)
+			if err != nil {
+				return nil, err
+			}
+			v.SetFilter(filter)
 		case *mongo.InsertOneModel:
 			err := th.tryCallBeforeSaveHook(v.Document)
 			if err != nil {
