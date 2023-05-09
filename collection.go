@@ -49,7 +49,7 @@ func (th *Collection[MODEL, ID]) IdExists(ctx context.Context, id ID) (bool, err
 	return c > 0, err
 }
 
-func (th *Collection[MODEL, ID]) IdsExists(ctx context.Context, ids []ID) (int64, error) {
+func (th *Collection[MODEL, ID]) IdsExistsNumber(ctx context.Context, ids []ID) (int64, error) {
 	return th.Count(ctx, bson.M{th.schema.IdField.DBName: bson.M{"$in": ids}})
 }
 
