@@ -15,41 +15,41 @@ import (
 	"time"
 )
 
-type Collection[MODEL any] struct {
+type Collection[MODEL any, ID any] struct {
 	schema          *entity.Entity
 	collection      *mongo.Collection
 	lastResumeToken bson.Raw
 	client          *Client
 }
 
-func NewCollection[MODEL any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL] {
+func NewCollection[MODEL any, ID any](model MODEL, database *Database, opts ...*options.CollectionOptions) *Collection[MODEL, ID] {
 	schema, err := entity.GetOrParse(model)
 	if err != nil {
 		panic(err)
 	}
 	col := database.db.Collection(schema.Collection, opts...)
 
-	return &Collection[MODEL]{
+	return &Collection[MODEL, ID]{
 		collection: col,
 		schema:     schema,
 		client:     database.client,
 	}
 }
 
-func (th *Collection[MODEL]) Client() *Client {
+func (th *Collection[MODEL, ID]) Client() *Client {
 	return th.client
 }
 
-func (th *Collection[MODEL]) FindOneById(ctx context.Context, id any, opts ...*options.FindOneOptions) (MODEL, error) {
+func (th *Collection[MODEL, ID]) FindOneById(ctx context.Context, id ID, opts ...*options.FindOneOptions) (MODEL, error) {
 	return th.FindOneByFilter(ctx, bson.M{th.schema.IdField.DBName: id}, opts...)
 }
 
-func (th *Collection[MODEL]) IdExists(ctx context.Context, id any) (bool, error) {
+func (th *Collection[MODEL, ID]) IdExists(ctx context.Context, id ID) (bool, error) {
 	c, err := th.Count(ctx, bson.M{th.schema.IdField.DBName: id})
 	return c > 0, err
 }
 
-func (th *Collection[MODEL]) IdsExists(ctx context.Context, ids []any) (bool, error) {
+func (th *Collection[MODEL, ID]) IdsExists(ctx context.Context, ids []ID) (bool, error) {
 	set := make(map[any]struct{}, 0)
 	var distinctIds []any
 	for _, id := range ids {
@@ -62,7 +62,7 @@ func (th *Collection[MODEL]) IdsExists(ctx context.Context, ids []any) (bool, er
 }
 
 // FindOneByFilter find one by filter
-func (th *Collection[MODEL]) FindOneByFilter(ctx context.Context, filter any, opts ...*options.FindOneOptions) (MODEL, error) {
+func (th *Collection[MODEL, ID]) FindOneByFilter(ctx context.Context, filter any, opts ...*options.FindOneOptions) (MODEL, error) {
 
 	var out MODEL
 
@@ -98,13 +98,13 @@ type Page interface {
 	GetCountTotal() bool
 }
 
-func (th *Collection[MODEL]) FindPage(ctx context.Context, page Page, filter any, opts ...*options.FindOptions) ([]MODEL, int64, error) {
+func (th *Collection[MODEL, ID]) FindPage(ctx context.Context, page Page, filter any, opts ...*options.FindOptions) ([]MODEL, int64, error) {
 	opts = append(opts, options.Find().SetSkip(page.GetLength()).SetSkip(page.GetOffset()))
 	return th.FindWithTotal(ctx, filter, page.GetCountTotal(), opts...)
 }
 
 // FindWithTotal get page
-func (th *Collection[MODEL]) FindWithTotal(ctx context.Context, filter any, countTotal bool, opts ...*options.FindOptions) ([]MODEL, int64, error) {
+func (th *Collection[MODEL, ID]) FindWithTotal(ctx context.Context, filter any, countTotal bool, opts ...*options.FindOptions) ([]MODEL, int64, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
@@ -140,7 +140,7 @@ func (th *Collection[MODEL]) FindWithTotal(ctx context.Context, filter any, coun
 }
 
 // Find filter type is any,you can use bson.M,bson.D...
-func (th *Collection[MODEL]) Find(ctx context.Context, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
+func (th *Collection[MODEL, ID]) Find(ctx context.Context, filter any, opts ...*options.FindOptions) ([]MODEL, error) {
 
 	convertedFilter, _, err := th.convertFilter(filter)
 	if err != nil {
@@ -166,7 +166,7 @@ func (th *Collection[MODEL]) Find(ctx context.Context, filter any, opts ...*opti
 	return out, nil
 }
 
-func (th *Collection[MODEL]) mustConvertFilter(filter any) (any, error) {
+func (th *Collection[MODEL, ID]) mustConvertFilter(filter any) (any, error) {
 	query, count, err := th.convertFilter(filter)
 
 	if err != nil {
@@ -180,7 +180,7 @@ func (th *Collection[MODEL]) mustConvertFilter(filter any) (any, error) {
 	return query, nil
 }
 
-func (th *Collection[MODEL]) convertFilter(filter any) (any, int, error) {
+func (th *Collection[MODEL, ID]) convertFilter(filter any) (any, int, error) {
 
 	switch v := filter.(type) {
 	// 原生M,直接返回
@@ -218,7 +218,7 @@ func (th *Collection[MODEL]) convertFilter(filter any) (any, int, error) {
 }
 
 // begin iter all fields in filter
-func (th *Collection[MODEL]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
+func (th *Collection[MODEL, ID]) fillToQuery(value reflect.Value, filterSchema *filterPkg.Filter, query bson.M) error {
 	for _, filterField := range filterSchema.Fields {
 		fieldValue := filterField.ReflectValueOf(value)
 		// continue if field value is zero
@@ -251,7 +251,7 @@ func (th *Collection[MODEL]) fillToQuery(value reflect.Value, filterSchema *filt
 	return nil
 }
 
-func (th *Collection[MODEL]) BulkWrite(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+func (th *Collection[MODEL, ID]) BulkWrite(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
 
 	// handle
 	var updateModels []any
@@ -336,27 +336,27 @@ func (th *Collection[MODEL]) BulkWrite(ctx context.Context, models []mongo.Write
 	return result, nil
 }
 
-func (th *Collection[MODEL]) NewUpdateOneModel(filter any, model MODEL) *mongo.UpdateOneModel {
+func (th *Collection[MODEL, ID]) NewUpdateOneModel(filter any, model MODEL) *mongo.UpdateOneModel {
 	return mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(model)
 }
 
-func (th *Collection[MODEL]) NewUpdateManyModel(filter any, model MODEL) *mongo.UpdateManyModel {
+func (th *Collection[MODEL, ID]) NewUpdateManyModel(filter any, model MODEL) *mongo.UpdateManyModel {
 	return mongo.NewUpdateManyModel().SetFilter(filter).SetUpdate(model)
 }
 
-func (th *Collection[MODEL]) NewInsertOneModel(model MODEL) *mongo.InsertOneModel {
+func (th *Collection[MODEL, ID]) NewInsertOneModel(model MODEL) *mongo.InsertOneModel {
 	return mongo.NewInsertOneModel().SetDocument(model)
 }
 
-func (th *Collection[MODEL]) NewDeleteOneModel(filter any) *mongo.DeleteOneModel {
+func (th *Collection[MODEL, ID]) NewDeleteOneModel(filter any) *mongo.DeleteOneModel {
 	return mongo.NewDeleteOneModel().SetFilter(filter)
 }
 
-func (th *Collection[MODEL]) NewDeleteManyModel(filter any) *mongo.DeleteManyModel {
+func (th *Collection[MODEL, ID]) NewDeleteManyModel(filter any) *mongo.DeleteManyModel {
 	return mongo.NewDeleteManyModel().SetFilter(filter)
 }
 
-func (th *Collection[MODEL]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
+func (th *Collection[MODEL, ID]) Aggregate(ctx context.Context, pipeline any, results any, opts ...*options.AggregateOptions) error {
 	cursor, err := th.collection.Aggregate(ctx, pipeline, opts...)
 
 	if err != nil {
@@ -372,7 +372,7 @@ func (th *Collection[MODEL]) Aggregate(ctx context.Context, pipeline any, result
 	return err
 }
 
-func (th *Collection[MODEL]) Count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
+func (th *Collection[MODEL, ID]) Count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return 0, err
@@ -380,7 +380,7 @@ func (th *Collection[MODEL]) Count(ctx context.Context, filter any, opts ...*opt
 	return th.count(ctx, query, opts...)
 }
 
-func (th *Collection[MODEL]) Exists(ctx context.Context, filter any, opts ...*options.CountOptions) (bool, error) {
+func (th *Collection[MODEL, ID]) Exists(ctx context.Context, filter any, opts ...*options.CountOptions) (bool, error) {
 	query, _, err := th.convertFilter(filter)
 	if err != nil {
 		return false, err
@@ -389,7 +389,7 @@ func (th *Collection[MODEL]) Exists(ctx context.Context, filter any, opts ...*op
 	return count > 0, err
 }
 
-func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
+func (th *Collection[MODEL, ID]) count(ctx context.Context, filter any, opts ...*options.CountOptions) (int64, error) {
 	//type Count struct {
 	//	Count int64 `bson:"count"`
 	//}
@@ -410,7 +410,7 @@ func (th *Collection[MODEL]) count(ctx context.Context, filter any, opts ...*opt
 }
 
 // 获取属性对应的schemaField
-func (th *Collection[MODEL]) mustSchemaField(fieldName string) (*entity.EntityField, error) {
+func (th *Collection[MODEL, ID]) mustSchemaField(fieldName string) (*entity.EntityField, error) {
 
 	schemaField := th.schema.LookUpField(fieldName)
 
@@ -422,7 +422,7 @@ func (th *Collection[MODEL]) mustSchemaField(fieldName string) (*entity.EntityFi
 }
 
 // InsertOne inert one
-func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
+func (th *Collection[MODEL, ID]) InsertOne(ctx context.Context, model MODEL, opts ...*options.InsertOneOptions) error {
 
 	if err := th.tryCallBeforeSaveHook(model); err != nil {
 		return err
@@ -439,7 +439,7 @@ func (th *Collection[MODEL]) InsertOne(ctx context.Context, model MODEL, opts ..
 }
 
 // InsertMany 创建一组内容
-func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
+func (th *Collection[MODEL, ID]) InsertMany(ctx context.Context, models []MODEL, opts ...*options.InsertManyOptions) error {
 
 	var ms = make([]any, 0, len(models))
 	for _, model := range models {
@@ -462,11 +462,11 @@ func (th *Collection[MODEL]) InsertMany(ctx context.Context, models []MODEL, opt
 	return nil
 }
 
-func (th *Collection[MODEL]) UpdateOneById(ctx context.Context, id any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
+func (th *Collection[MODEL, ID]) UpdateOneById(ctx context.Context, id ID, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 	return th.UpdateOne(ctx, bson.M{th.schema.IdDBName(): id}, model, opts...)
 }
 
-func (th *Collection[MODEL]) UpdateOne(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
+func (th *Collection[MODEL, ID]) UpdateOne(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (bool, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, false, opts)
 	if err != nil {
@@ -476,7 +476,7 @@ func (th *Collection[MODEL]) UpdateOne(ctx context.Context, filter any, model MO
 	return result.ModifiedCount > 0, err
 }
 
-func (th *Collection[MODEL]) UpdateMany(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (int64, error) {
+func (th *Collection[MODEL, ID]) UpdateMany(ctx context.Context, filter any, model MODEL, opts ...*options.UpdateOptions) (int64, error) {
 
 	result, err := th.doUpdate(ctx, filter, model, true, opts)
 	if err != nil {
@@ -486,7 +486,7 @@ func (th *Collection[MODEL]) UpdateMany(ctx context.Context, filter any, model M
 	return result.ModifiedCount, err
 }
 
-func (th *Collection[MODEL]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (th *Collection[MODEL, ID]) doUpdate(ctx context.Context, filter any, model any, multi bool, opts []*options.UpdateOptions) (*mongo.UpdateResult, error) {
 
 	err := th.tryCallBeforeUpdateHook(model)
 	if err != nil {
@@ -526,7 +526,7 @@ func (th *Collection[MODEL]) doUpdate(ctx context.Context, filter any, model any
 	return result, nil
 }
 
-func (th *Collection[MODEL]) mapToUpdate(model any) (bson.M, error) {
+func (th *Collection[MODEL, ID]) mapToUpdate(model any) (bson.M, error) {
 	value := reflect.ValueOf(model)
 
 	update := bson.M{}
@@ -545,14 +545,14 @@ func (th *Collection[MODEL]) mapToUpdate(model any) (bson.M, error) {
 	}, nil
 }
 
-func (th *Collection[MODEL]) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+func (th *Collection[MODEL, ID]) FindAndModify(ctx context.Context, filter any, document any, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
 	return th.collection.FindOneAndUpdate(ctx, filter, document, opts...)
 }
 
-func (th *Collection[MODEL]) DeleteOneById(ctx context.Context, id any) (bool, error) {
+func (th *Collection[MODEL, ID]) DeleteOneById(ctx context.Context, id ID) (bool, error) {
 	return th.DeleteOne(ctx, bson.M{th.schema.IdDBName(): id})
 }
-func (th *Collection[MODEL]) DeleteOne(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, ID]) DeleteOne(ctx context.Context, filter any) (bool, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -570,12 +570,12 @@ func (th *Collection[MODEL]) DeleteOne(ctx context.Context, filter any) (bool, e
 	return result.DeletedCount > 0, nil
 }
 
-func (th *Collection[MODEL]) Delete(ctx context.Context, filter any) (bool, error) {
+func (th *Collection[MODEL, ID]) Delete(ctx context.Context, filter any) (bool, error) {
 	count, err := th.doDelete(ctx, filter, true)
 	return count > 0, err
 }
 
-func (th *Collection[MODEL]) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
+func (th *Collection[MODEL, ID]) doDelete(ctx context.Context, filter any, multi bool) (int64, error) {
 
 	query, count, err := th.convertFilter(filter)
 	if err != nil {
@@ -600,12 +600,12 @@ func (th *Collection[MODEL]) doDelete(ctx context.Context, filter any, multi boo
 	return result.DeletedCount, nil
 }
 
-func (th *Collection[MODEL]) EnsureIndex(model *mongo.IndexModel) (string, error) {
+func (th *Collection[MODEL, ID]) EnsureIndex(model *mongo.IndexModel) (string, error) {
 	return th.collection.Indexes().CreateOne(context.Background(), *model)
 }
 
 // listen: 出错直接使用panic
-func (th *Collection[MODEL]) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
+func (th *Collection[MODEL, ID]) Watch(opts *options.ChangeStreamOptions, matchStage bson.D, listen func(stream *mongo.ChangeStream) error) {
 
 	for {
 		time.After(1 * time.Second)
@@ -653,7 +653,7 @@ func (th *Collection[MODEL]) Watch(opts *options.ChangeStreamOptions, matchStage
 	}
 }
 
-func (th *Collection[MODEL]) tryCallBeforeSaveHook(model any) error {
+func (th *Collection[MODEL, ID]) tryCallBeforeSaveHook(model any) error {
 	if d, ok := model.(BeforeSave); ok {
 		err := d.BeforeSave()
 		if err != nil {
@@ -667,13 +667,13 @@ func (th *Collection[MODEL]) tryCallBeforeSaveHook(model any) error {
 	return nil
 }
 
-func (th *Collection[MODEL]) tryCallAfterSaveHook(model any, id any) {
+func (th *Collection[MODEL, ID]) tryCallAfterSaveHook(model any, id ID) {
 	if d, ok := model.(AfterSave); ok {
 		d.AfterSave(id)
 	}
 }
 
-func (th *Collection[MODEL]) tryCallBeforeUpdateHook(model any) error {
+func (th *Collection[MODEL, ID]) tryCallBeforeUpdateHook(model any) error {
 	if d, ok := model.(BeforeUpdate); ok {
 		err := d.BeforeUpdate()
 		if err != nil {
@@ -683,7 +683,7 @@ func (th *Collection[MODEL]) tryCallBeforeUpdateHook(model any) error {
 	return nil
 }
 
-func (th *Collection[MODEL]) tryCallAfterUpdateHook(model any) {
+func (th *Collection[MODEL, ID]) tryCallAfterUpdateHook(model any) {
 	if d, ok := model.(AfterUpdate); ok {
 		d.AfterUpdate()
 	}
