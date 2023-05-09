@@ -49,16 +49,8 @@ func (th *Collection[MODEL, ID]) IdExists(ctx context.Context, id ID) (bool, err
 	return c > 0, err
 }
 
-func (th *Collection[MODEL, ID]) IdsExists(ctx context.Context, ids []ID) (bool, error) {
-	set := make(map[any]struct{}, 0)
-	var distinctIds []any
-	for _, id := range ids {
-		if _, ok := set[id]; !ok {
-			distinctIds = append(distinctIds, id)
-		}
-	}
-	c, err := th.Count(ctx, bson.M{th.schema.IdField.DBName: bson.M{"$in": distinctIds}})
-	return c == int64(len(distinctIds)), err
+func (th *Collection[MODEL, ID]) IdsExists(ctx context.Context, ids []ID) (int64, error) {
+	return th.Count(ctx, bson.M{th.schema.IdField.DBName: bson.M{"$in": ids}})
 }
 
 // FindOneByFilter find one by filter
