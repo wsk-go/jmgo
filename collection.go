@@ -158,7 +158,7 @@ func (th *Collection[MODEL]) mustConvertFilter(filter any) (any, error) {
 	query, count, err := th.convertFilter(filter)
 
 	if err != nil {
-		return NotIn{}, err
+		return nil, err
 	}
 
 	if count == 0 {
