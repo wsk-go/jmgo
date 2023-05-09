@@ -239,11 +239,14 @@ func (th *Collection[MODEL]) fillToQuery(value reflect.Value, filterSchema *filt
 	return nil
 }
 
-func (th *Collection[MODEL]) Bulk(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+func (th *Collection[MODEL]) BulkWrite(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
 
+	// handle
+	var updateModels []any
 	for _, model := range models {
 		switch v := model.(type) {
 		case *mongo.UpdateOneModel:
+			updateModels = append(updateModels, v.Update)
 			filter, err := th.mustConvertFilter(v.Filter)
 			if err != nil {
 				return nil, err
@@ -261,7 +264,6 @@ func (th *Collection[MODEL]) Bulk(ctx context.Context, models []mongo.WriteModel
 			}
 			v.SetUpdate(doc)
 		case *mongo.UpdateManyModel:
-
 			filter, err := th.mustConvertFilter(v.Filter)
 			if err != nil {
 				return nil, err
@@ -279,7 +281,6 @@ func (th *Collection[MODEL]) Bulk(ctx context.Context, models []mongo.WriteModel
 			}
 			v.SetUpdate(doc)
 		case *mongo.DeleteOneModel:
-
 			filter, err := th.mustConvertFilter(v.Filter)
 			if err != nil {
 				return nil, err
@@ -298,36 +299,42 @@ func (th *Collection[MODEL]) Bulk(ctx context.Context, models []mongo.WriteModel
 			}
 		}
 	}
+
+	// write models to mongodb
 	result, err := th.collection.BulkWrite(ctx, models, opts...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
+	// call hook for insert one and update one
 	for i, model := range models {
 		if insertion, ok := model.(*mongo.InsertOneModel); ok {
 			th.tryCallAfterSaveHook(insertion.Document, result.UpsertedIDs[int64(i)])
 		}
 	}
+	for _, model := range updateModels {
+		th.tryCallAfterUpdateHook(model)
+	}
 	return result, nil
 }
 
-func (th *Collection[MODEL]) UpdateOneModel(filter any, model MODEL) *mongo.UpdateOneModel {
+func (th *Collection[MODEL]) NewUpdateOneModel(filter any, model MODEL) *mongo.UpdateOneModel {
 	return mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(model)
 }
 
-func (th *Collection[MODEL]) UpdateManyModel(filter any, model MODEL) *mongo.UpdateManyModel {
+func (th *Collection[MODEL]) NewUpdateManyModel(filter any, model MODEL) *mongo.UpdateManyModel {
 	return mongo.NewUpdateManyModel().SetFilter(filter).SetUpdate(model)
 }
 
-func (th *Collection[MODEL]) InsertOneModel(model MODEL) *mongo.InsertOneModel {
+func (th *Collection[MODEL]) NewInsertOneModel(model MODEL) *mongo.InsertOneModel {
 	return mongo.NewInsertOneModel().SetDocument(model)
 }
 
-func (th *Collection[MODEL]) DeleteOneModel(filter any) *mongo.DeleteOneModel {
+func (th *Collection[MODEL]) NewDeleteOneModel(filter any) *mongo.DeleteOneModel {
 	return mongo.NewDeleteOneModel().SetFilter(filter)
 }
 
-func (th *Collection[MODEL]) DeleteManyModel(filter any) *mongo.DeleteManyModel {
+func (th *Collection[MODEL]) NewDeleteManyModel(filter any) *mongo.DeleteManyModel {
 	return mongo.NewDeleteManyModel().SetFilter(filter)
 }
 

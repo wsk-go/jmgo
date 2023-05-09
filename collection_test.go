@@ -3,7 +3,9 @@ package jmongo
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
 	"time"
@@ -13,6 +15,24 @@ const MongoUrl = "mongodb://47.94.142.208:27017/admin?connect=direct&maxPoolSize
 
 type Base struct {
 	Like string `bson:"like"`
+}
+
+func (b *Base) AfterUpdate() {
+	fmt.Println("after update")
+}
+
+func (b *Base) AfterSave(id any) {
+	fmt.Println("after save")
+}
+
+func (b *Base) BeforeUpdate() error {
+	fmt.Println("before update")
+	return nil
+}
+
+func (b *Base) BeforeSave() error {
+	fmt.Println("before save")
+	return nil
 }
 
 type Test struct {
@@ -32,20 +52,58 @@ type TestFilter struct {
 func Test_Raw_Insert(t *testing.T) {
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[Test](Test{}, db)
+	col := NewCollection[*Test](&Test{}, db)
 
-	err := col.InsertOne(context.Background(), Test{
+	err := col.InsertOne(context.Background(), &Test{
 		Name:         "abc",
 		Age:          8,
 		HelloWorld:   123,
 		UserPassword: 2,
-		OrderId:      NewObjectIdString(),
+		OrderId:      NewSObjectId(),
+	})
+
+	_, err = col.UpdateOne(context.Background(), bson.M{"_id": SObjectId("6425087c44ad0aff2c691cea")}, &Test{
+		Name:         "abc",
+		Age:          8,
+		HelloWorld:   123,
+		UserPassword: 2,
+		OrderId:      NewSObjectId(),
 	})
 
 	if err != nil {
 		fmt.Printf("%+v", err)
 		return
 	}
+}
+
+func Test_Bulk(t *testing.T) {
+	c := setupMongoClient(MongoUrl)
+	db := c.Database("test")
+	col := NewCollection[*Test](&Test{}, db)
+
+	r, err := col.BulkWrite(context.Background(), []mongo.WriteModel{
+		col.NewUpdateManyModel(TestFilter{Id: "6425087c44ad0aff2c691cea"}, &Test{
+			Name:         "abc11",
+			Age:          8,
+			HelloWorld:   123,
+			UserPassword: 2,
+			OrderId:      NewSObjectId(),
+		}),
+		col.NewInsertOneModel(&Test{
+			Name:         "abc1122",
+			Age:          8,
+			HelloWorld:   123,
+			UserPassword: 2,
+			OrderId:      NewSObjectId(),
+		}),
+	})
+
+	if err != nil {
+		fmt.Printf("%+v", err)
+		return
+	}
+
+	fmt.Println(r.MatchedCount)
 }
 
 //	func Test_Raw_InsertTransaction(t *testing.T) {
@@ -60,7 +118,7 @@ func Test_Raw_Insert(t *testing.T) {
 //				Age:          8,
 //				HelloWorld:   123,
 //				UserPassword: 2,
-//				OrderId:      types.NewObjectIdString(),
+//				OrderId:      types.NewSObjectId(),
 //			})
 //			if err != nil {
 //				return err
@@ -71,7 +129,7 @@ func Test_Raw_Insert(t *testing.T) {
 //				Age:          8,
 //				HelloWorld:   123,
 //				UserPassword: 2,
-//				OrderId:      types.NewObjectIdString(),
+//				OrderId:      types.NewSObjectId(),
 //			})
 //			return errors.New("test")
 //		})

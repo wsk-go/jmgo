@@ -85,6 +85,6 @@ func (th SObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	return t, v, err
 }
 
-func NewObjectIdString() SObjectId {
+func NewSObjectId() SObjectId {
 	return SObjectId(primitive.NewObjectID().Hex())
 }
