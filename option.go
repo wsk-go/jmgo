@@ -2,7 +2,7 @@ package jmongo
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmongo/entity"
+	"github.com/JackWSK/jmgo/entity"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

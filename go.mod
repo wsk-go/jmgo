@@ -1,4 +1,4 @@
-module github.com/JackWSK/jmongo
+module github.com/JackWSK/jmgo
 
 go 1.18
 

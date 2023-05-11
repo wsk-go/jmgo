@@ -2,7 +2,7 @@ package filter
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmongo/errortype"
+	"github.com/JackWSK/jmgo/errortype"
 	"github.com/pkg/errors"
 	"reflect"
 	"sync"

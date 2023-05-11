@@ -2,8 +2,8 @@ package entity
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmongo/errortype"
-	"github.com/JackWSK/jmongo/internal/utils"
+	"github.com/JackWSK/jmgo/errortype"
+	"github.com/JackWSK/jmgo/internal/utils"
 	"github.com/pkg/errors"
 	"reflect"
 	"sync"
