@@ -1,4 +1,4 @@
-module github.com/JackWSK/jmgo
+module github.com/wsk-go/jmgo
 
 go 1.18
 
