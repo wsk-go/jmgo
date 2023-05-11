@@ -1,4 +1,4 @@
-package jmongo
+package jmgo
 
 type BeforeSave interface {
 	BeforeSave() error

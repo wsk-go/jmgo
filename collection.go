@@ -1,4 +1,4 @@
-package jmongo
+package jmgo
 
 import (
 	"context"
@@ -659,7 +659,7 @@ func (th *Collection[MODEL, ID]) tryCallBeforeSaveHook(model any) error {
 	return nil
 }
 
-func (th *Collection[MODEL, ID]) tryCallAfterSaveHook(model any, id ID) {
+func (th *Collection[MODEL, ID]) tryCallAfterSaveHook(model any, id any) {
 	if d, ok := model.(AfterSave); ok {
 		d.AfterSave(id)
 	}

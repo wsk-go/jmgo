@@ -1,4 +1,4 @@
-package jmongo
+package jmgo
 
 import "github.com/go-playground/validator/v10"
 

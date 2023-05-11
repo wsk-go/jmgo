@@ -1,4 +1,4 @@
-package jmongo
+package jmgo
 
 import (
 	"context"
@@ -52,7 +52,7 @@ type TestFilter struct {
 func Test_Raw_Insert(t *testing.T) {
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[*Test](&Test{}, db)
+	col := NewCollection[*Test, SObjectId](&Test{}, db)
 
 	err := col.InsertOne(context.Background(), &Test{
 		Name:         "abc",
@@ -79,7 +79,7 @@ func Test_Raw_Insert(t *testing.T) {
 func Test_Bulk(t *testing.T) {
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[*Test](&Test{}, db)
+	col := NewCollection[*Test, SObjectId](&Test{}, db)
 
 	r, err := col.BulkWrite(context.Background(), []mongo.WriteModel{
 		col.NewUpdateManyModel(TestFilter{Id: "6425087c44ad0aff2c691cea"}, &Test{
@@ -139,7 +139,7 @@ func Test_Raw_Read(t *testing.T) {
 
 	c := setupMongoClient(MongoUrl)
 	db := c.Database("test")
-	col := NewCollection[*Test](&Test{}, db)
+	col := NewCollection[*Test, SObjectId](&Test{}, db)
 	ctx := context.Background()
 
 	models, err := col.FindOneByFilter(ctx, TestFilter{})
