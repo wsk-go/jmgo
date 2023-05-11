@@ -2,9 +2,9 @@ package entity
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmgo/errortype"
-	"github.com/JackWSK/jmgo/internal/utils"
 	"github.com/pkg/errors"
+	"github.com/wsk-go/jmgo/errortype"
+	"github.com/wsk-go/jmgo/internal/utils"
 	"reflect"
 	"sync"
 )

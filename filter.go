@@ -3,9 +3,9 @@ package jmongo
 import (
 	"errors"
 	"fmt"
-	"github.com/JackWSK/jmgo/entity"
-	"github.com/JackWSK/jmgo/filter"
-	"github.com/JackWSK/jmgo/internal/utils"
+	"github.com/wsk-go/jmgo/entity"
+	"github.com/wsk-go/jmgo/filter"
+	"github.com/wsk-go/jmgo/internal/utils"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

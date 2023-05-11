@@ -2,8 +2,8 @@ package filter
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmgo/errortype"
 	"github.com/pkg/errors"
+	"github.com/wsk-go/jmgo/errortype"
 	"reflect"
 	"sync"
 )

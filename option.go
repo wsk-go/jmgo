@@ -2,8 +2,8 @@ package jmongo
 
 import (
 	"fmt"
-	"github.com/JackWSK/jmgo/entity"
 	"github.com/pkg/errors"
+	"github.com/wsk-go/jmgo/entity"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
