@@ -9,7 +9,7 @@ import (
 
 type ClientConfig struct {
 	Validate ValidateFunc
-	opts     []*options.ClientOptions
+	Opts     []*options.ClientOptions
 }
 
 type Client struct {
@@ -18,7 +18,7 @@ type Client struct {
 }
 
 func NewClient(config ClientConfig) (*Client, error) {
-	c, err := mongo.NewClient(config.opts...)
+	c, err := mongo.NewClient(config.Opts...)
 	if err != nil {
 		return nil, err
 	}
