@@ -2,8 +2,8 @@ package jmgo
 
 import "github.com/go-playground/validator/v10"
 
-type Validator interface {
-	Struct(obj any) error
-}
+var validate = validator.New()
 
-var Validate Validator = validator.New()
+var Validate = func(obj any) error {
+	return validate.Struct(obj)
+}

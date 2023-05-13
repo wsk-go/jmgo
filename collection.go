@@ -652,7 +652,7 @@ func (th *Collection[MODEL, ID]) tryCallBeforeSaveHook(model any) error {
 			return err
 		}
 		// 校验模型
-		if err := Validate.Struct(model); err != nil {
+		if err := Validate(model); err != nil {
 			return errors.WithStack(err)
 		}
 	}
