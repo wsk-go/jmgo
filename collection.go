@@ -652,11 +652,19 @@ func (th *Collection[MODEL, ID]) tryCallBeforeSaveHook(model any) error {
 			return err
 		}
 		// 校验模型
-		if err := Validate(model); err != nil {
+		if err := th.validate(model); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 	return nil
+}
+
+func (th *Collection[MODEL, ID]) validate(model any) error {
+	if th.client.Validate == nil {
+		return defaultValidate(model)
+	} else {
+		return th.client.Validate(model)
+	}
 }
 
 func (th *Collection[MODEL, ID]) tryCallAfterSaveHook(model any, id any) {

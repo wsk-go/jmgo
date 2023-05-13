@@ -7,16 +7,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-type Client struct {
-	client *mongo.Client
+type ClientConfig struct {
+	Validate ValidateFunc
+	opts     []*options.ClientOptions
 }
 
-func NewClient(opts ...*options.ClientOptions) (*Client, error) {
-	c, err := mongo.NewClient(opts...)
+type Client struct {
+	client   *mongo.Client
+	Validate ValidateFunc
+}
+
+func NewClient(config ClientConfig) (*Client, error) {
+	c, err := mongo.NewClient(config.opts...)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{client: c}, nil
+	return &Client{client: c, Validate: config.Validate}, nil
 }
 
 func (c *Client) Client() *mongo.Client {
